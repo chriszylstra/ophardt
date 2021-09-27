@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<Incidents>
+	<Incident id="Injury">
+		<days>09-10-2021</days>
+	</Incident>
+	<Incident id="Miss">
+		<days>09-07-2021</days>
+	</Incident>
+	<Incident id="Manuf">
+		<days>09-01-2021</days>
+	</Incident>
+	<Incident id="bday">
+		<days>08-05-2022</days>
+	</Incident>
+</Incidents>
