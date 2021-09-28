@@ -7,42 +7,67 @@ using namespace std;
 
 double calculate(double a, double b, double c, double d){
     double ans = 0;
-    ans = abs((a-c)*(a-c))+abs((b-d)*(b-d));
+    ans = abs((a-b)*(a-b))+abs((c-d)*(c-d));
     return sqrt(ans);
 }
 
+void print(int x[], int size){
+    for (int i = 0; i < size+2; i++){
+        cout << x[i] << " ";
+    }
+    cout << endl;
+}
+
+double sum(double x[], int size){
+    double a = 0;
+    for (int i = 0; i <size+1; i++){
+        a+= x[i];
+    }
+    return a/2;
+ }
+
+double results[] = {0};
+
 int main(){
     int s;
-    double len[s+1] = {0};
-    double result = 0;
-    do
-    {
-        cin >> s;
-        //cout << "s: " << s << endl;
-        double datapoints[s+2][3] = {0};
-        datapoints[0][0] = 0;
-        datapoints[0][1] = 0;
-        datapoints[0][2] = 0;
-        datapoints[s+1][0] = 100;
-        datapoints[s+1][1] = 100;
-        datapoints[s+1][2] = 10;
+    double time = 0;
+    cin >> s;
+    if (s == 0){
+        return 0;
+    }
 
-        for (int i = 1; i<s+1; i++){
-            cin >> datapoints[i][0] >> datapoints[i][1] >> datapoints[i][2]; 
-            len[i-1] = calculate(datapoints[i-1][0], datapoints[i-1][1], datapoints[i][0], datapoints[i][1]);
-            cout << "Length: " << len[i-1] << endl;
+    double x[s+2] = {};
+    double y[s+2] = {};
+    double penalty[s+2] = {};
+    x[0] = 0;
+    x[s+1] = 100;
+    y[0] = 0;
+    y[s+1] = 100;
+    penalty[0] = 0;
+    penalty[s+1] = 10;
+
+    for (int i = 1; i < s+1; i++){
+        cin >> x[i] >> y[i] >> penalty[i]; 
+    }
+    for (int i = 0; i < s+1; i++){
+
+        //special case - skip the point and incur the penalty. 
+        if (true){
+            cout << x[i] << " " << x[i+2] << " " << y[i] << " " << y[i+2] << endl;
+            results[i] = calculate(x[i-1],x[i+1],y[i-1],y[i+1]);
+            time += penalty[i];
         }
-       len[s] = calculate(datapoints[s][0], datapoints[s][1], datapoints[s+1][0], datapoints[s+1][1]);
-       for (int i = 0; i < sizeof(len); i++){
-            result += len[i];
-            len[i] = 0;
-       }
-       cout << "Total length: " << result << endl; 
-        result = 0;
-
-       
-
-    } while (s != 0);
+        //normal case - hit each point
+        else{
+            results[i] = calculate(x[i],x[i+1],y[i],y[i+1]);
+            time += 10;
+        }
+    }
+    time += sum(results, s);
+    cout << "Time: " << time << endl;
+    
+    main();
+    
 
 }        
 
