@@ -6,9 +6,6 @@
 #include <iostream>
 #include <math.h>
 #include <vector>
-#include <ctime>
-#include <cstdio>
-#include <time.h>
 
 using namespace std;
 
@@ -18,25 +15,13 @@ double pythag(double a, double b, double c, double d){
 }
 
 vector <double> time_arr;
-bool first = true;
-time_t begin,end;
-clock_t start, finish;
 
 int main(){
-
-    if (first){
-        first = false;
-        start = clock();
-    }
-
     int s;
     cin >> s;
 
     if (s == 0){
         for (int i = 0; i < time_arr.size(); i++) cout << time_arr[i] << endl;
-        finish = clock();
-        double difference = difftime(finish,start)/CLOCKS_PER_SEC;
-        cout << "Time: " << difference << "seconds." << endl;
         return 0;
     }
     
