@@ -23,6 +23,11 @@ def start_prog():
     buttonStart.disable()
     buttonStop.enable()
     buttonPause.enable()
+    length.disable()
+    delay.disable()
+    dwell.disable()
+    programName.disable()
+    cb.disable()
     print("Start")
     global filename
     global remaining
@@ -86,6 +91,11 @@ def cycle():
 
 def stop_prog():
     global remaining
+    length.enable()
+    delay.enable()
+    dwell.enable()
+    programName.enable()
+    cb.enable()
     buttonStart.enable()
     buttonStop.disable()
     buttonPause.disable()
