@@ -5,15 +5,19 @@ import time
 import RPi.GPIO as GPIO
 import csv
 import serial
-
+import re
 
 GPIO.setwarnings(False)
 
 
 ser = serial.Serial(port='/dev/ttyUSB0', baudrate = 9600, parity=serial.PARITY_ODD, stopbits = serial.STOPBITS_ONE, bytesize=serial.SEVENBITS)
+
 today = date.today()
 d1=today.strftime("%d-%b-%Y")
 filename = ""
+diff = 0
+prev = 0
+
 
 def start_prog():
     buttonStart.disable()
@@ -44,10 +48,11 @@ def start_prog():
             buttonStart.enable()
             buttonStop.disable()
             buttonPause.disable()
+            return
         calculateMins()
         filename = programName.value + "_"+ d1 + ".csv"
         info("InfoBox", "Program Started:\n\n" + length.value + " cycles\nat " + delay.value + "s delay / "+ dwell.value + "s dwell."+ " \n\n" + "Filename: " +  filename)
-        headerList = ['Number', 'Timestamp', 'Scale']
+        headerList = ['Number', 'Timestamp', 'Total', 'Difference']
         with open('/media/pi/USB/'+filename, 'w') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=',')
             csv_writer.writerow(headerList)
@@ -64,13 +69,15 @@ def start_prog():
  
 def cycle():
     global remaining
+    global diff
     dashboard.value = "Cycles Remaining: " + str(int(length.value)-remaining) + " (" + str(round((int(length.value)-remaining)*(int(delay.value)+int(dwell.value))/60,1)) + " minutes)"
+    last.value = "Last Dose: " + str(diff) + " grams"
     if remaining<int(length.value):
-        print(remaining)
         remaining+=1
         activate()
         writedata(remaining)
     else:
+        activate()
         app.cancel(cycle)
         app.cancel(deactivate)
         buttonStart.enable()
@@ -85,14 +92,17 @@ def stop_prog():
     buttonPause.text = "Pause"
     app.cancel(cycle)
     app.cancel(deactivate)
+    activate()
     remaining = 0
     print("stop")
     GPIO.cleanup()
     
 def pause_prog():
+    
     buttonStart.disable()
     buttonStop.enable()
     if buttonPause.text == "Pause":
+        activate()
         app.cancel(cycle)
         app.cancel(deactivate)
         buttonPause.text= "Resume"
@@ -115,12 +125,21 @@ def calculateMins():
     minutes = round((minutes/60),1)
 
 def writedata(count):
+    global diff
+    global prev
+    
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
     x = ser.readline()
-    scale.value = "Current Weight: " +str(x)
+    x = float(x[3:10])
+    
+    diff = x-prev
+    diff = round(diff,2)
+    prev = x
+
     print(x)
-    data = str(count) + ","+ current_time + ","+ str(x) + "\n"
+    scale.value = "Current Weight: " +str(x) + " grams"
+    data = str(count) + ","+ current_time + ","+ str(x) + "," + str(diff) + "\n"
     with open("/media/pi/USB/" + filename, 'a') as fd:
         fd.write(data)
     ser.reset_input_buffer()
@@ -137,11 +156,13 @@ def deactivate():
     GPIO.output(4, GPIO.LOW)
 
 def exit_but():
+    activate()
     app.destroy()
 
-
+activate()
 app = App(title= "Pump Down Tester", layout = "grid")
 app.set_full_screen()
+
 
 blanktext1 = Text(app, text="", size= 20, grid=[0,0])
 
@@ -153,7 +174,7 @@ delay.text_size = 50
 delay.focus()
 text_delay2 = Text(box1, text = "seconds", align="left", size = 50)
 
-cb = ButtonGroup(app, options=["Touchless","Manual"], selected="Touchless", align= "right", grid=[0,2])
+cb = ButtonGroup(app, options=["Touchless","Manual"], selected="Manual", align= "right", grid=[0,2])
 cb.text_size = 25
 
 box11 = Box(app,border = True, grid=[0,3],align="left")
@@ -196,11 +217,17 @@ buttonStop.bg = "tomato"
 buttonStop.text_size = 20
 buttonStop.disable()
 
+box6 = Box(app, grid=[0,11], width = "fill")
+buttonIn = PushButton(box6, command=deactivate, text = "Extend Arm", width = 10, height = 1, align = "left")
+buttonIn.bg = "royal blue"
+buttonOut = PushButton(box6, command=activate, text = "Retract Arm", width = 10, height = 1, align = "left")
+buttonOut.bg = "royal blue"
 blanktext4 = Text(app, text="", size= 40, grid=[0,10])
 
-box4 = Box(app, layout = "grid", border = True, grid=[0,11], align = "left")
+box4 = Box(app, layout = "grid", border = True, grid=[0,10], align = "left")
 dashboard = Text(box4, text = "Cycles Remaining: " + length.value, grid=[0,0], size = 20,align= "left")
 scale = Text(box4, text = "Scale Value: ", grid=[0,1], size = 20, align = "left")
+last = Text(box4, text = "Last Dose: ", grid = [0,2], size = 20, align = "left")
 blanktext5 = Text(app, text="", size =40, grid = [0,12])
 
 exiter = PushButton(app, command=exit_but, text = "Exit", width = 20, height = 2, grid=[0,13], align = "bottom")
