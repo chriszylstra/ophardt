@@ -9,9 +9,35 @@ import re
 
 GPIO.setwarnings(False)
 
+app = App(title= "Pump Down Tester", layout = "grid")
+app.set_full_screen()
+usb_status = False
+scale_status = False
 
-ser = serial.Serial(port='/dev/ttyUSB0', baudrate = 9600, parity=serial.PARITY_ODD, stopbits = serial.STOPBITS_ONE, bytesize=serial.SEVENBITS)
+def activate():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(4, GPIO.OUT)
+    GPIO.output(4, GPIO.HIGH)
+    
 
+def deactivate():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(4, GPIO.OUT)
+    GPIO.output(4, GPIO.LOW)
+
+def exit_but():
+    activate()
+    app.destroy()
+    exit()
+
+try:
+    ser = serial.Serial(port='/dev/ttyUSB0', baudrate = 9600, parity=serial.PARITY_ODD, stopbits = serial.STOPBITS_ONE, bytesize=serial.SEVENBITS)
+    scale_status = True
+except:
+    print("No scale connected!")
+    app.warn("Warning", "Scale not connected. Continuing without capturing data.")
+    scale_status = False
+    
 today = date.today()
 d1=today.strftime("%d-%b-%Y")
 filename = ""
@@ -23,9 +49,15 @@ def start_prog():
     buttonStart.disable()
     buttonStop.enable()
     buttonPause.enable()
+    length.disable()
+    delay.disable()
+    dwell.disable()
+    programName.disable()
+    cb.disable()
     print("Start")
     global filename
     global remaining
+    global usb_status
     if delay.value == "":
         app.warn("Warning", "Please enter delay value.")
         delay.focus()
@@ -51,11 +83,16 @@ def start_prog():
             return
         calculateMins()
         filename = programName.value + "_"+ d1 + ".csv"
-        info("InfoBox", "Program Started:\n\n" + length.value + " cycles\nat " + delay.value + "s delay / "+ dwell.value + "s dwell."+ " \n\n" + "Filename: " +  filename)
+        #info("InfoBox", "Program Started:\n\n" + length.value + " cycles\nat " + delay.value + "s delay / "+ dwell.value + "s dwell."+ " \n\n" + "Filename: " +  filename)
         headerList = ['Number', 'Timestamp', 'Total', 'Difference']
-        with open('/media/pi/USB/'+filename, 'w') as csv_file:
-            csv_writer = csv.writer(csv_file, delimiter=',')
-            csv_writer.writerow(headerList)
+        try:
+            with open('/media/pi/USB/'+filename, 'w') as csv_file:
+                csv_writer = csv.writer(csv_file, delimiter=',')
+                csv_writer.writerow(headerList)
+            usb_status = True;
+        except:
+            app.warn("Warning", "No USB connected. Data will not be saved.\n(Drive must be named exactly 'USB')")
+            usb_status = False;
         remaining = 0
         print(cb.value_text)
         if cb.value_text == "Touchless":
@@ -75,7 +112,8 @@ def cycle():
     if remaining<int(length.value):
         remaining+=1
         activate()
-        writedata(remaining)
+        if (scale_status):
+            writedata(remaining)
     else:
         activate()
         app.cancel(cycle)
@@ -86,6 +124,11 @@ def cycle():
 
 def stop_prog():
     global remaining
+    length.enable()
+    delay.enable()
+    dwell.enable()
+    programName.enable()
+    cb.enable()
     buttonStart.enable()
     buttonStop.disable()
     buttonPause.disable()
@@ -131,37 +174,28 @@ def writedata(count):
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
     x = ser.readline()
-    x = float(x[3:10])
-    
-    diff = x-prev
-    diff = round(diff,2)
-    prev = x
-
+    #print(x)
+    try:
+        x = float(x[3:10])
+        diff = x-prev
+        diff = round(diff,2)
+        prev = x
+    except ValueError:
+        x = prev
+        diff = 0
+    global usb_status
     print(x)
     scale.value = "Current Weight: " +str(x) + " grams"
     data = str(count) + ","+ current_time + ","+ str(x) + "," + str(diff) + "\n"
-    with open("/media/pi/USB/" + filename, 'a') as fd:
-        fd.write(data)
+    if (usb_status):
+        with open("/media/pi/USB/" + filename, 'a') as fd:
+            fd.write(data)
     ser.reset_input_buffer()
         
-def activate():
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(4, GPIO.OUT)
-    GPIO.output(4, GPIO.HIGH)
-    
 
-def deactivate():
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(4, GPIO.OUT)
-    GPIO.output(4, GPIO.LOW)
-
-def exit_but():
-    activate()
-    app.destroy()
 
 activate()
-app = App(title= "Pump Down Tester", layout = "grid")
-app.set_full_screen()
+
 
 
 blanktext1 = Text(app, text="", size= 20, grid=[0,0])
