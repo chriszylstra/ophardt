@@ -35,7 +35,7 @@ try:
     scale_status = True
 except:
     print("No scale connected!")
-    app.warn("Warning", "Scale not connected. Continuing without capturing data.")
+    app.warn("Warning", "Scale not connected. Continuing without data.")
     scale_status = False
     
 today = date.today()
@@ -58,6 +58,7 @@ def start_prog():
     global filename
     global remaining
     global usb_status
+    global serial_status
     if delay.value == "":
         app.warn("Warning", "Please enter delay value.")
         delay.focus()
@@ -93,6 +94,8 @@ def start_prog():
         except:
             app.warn("Warning", "No USB connected. Data will not be saved.\n(Drive must be named exactly 'USB')")
             usb_status = False;
+        print("USB: " + str(usb_status));
+        print("Serial: " + str(scale_status))
         remaining = 0
         print(cb.value_text)
         if cb.value_text == "Touchless":
@@ -107,6 +110,7 @@ def start_prog():
 def cycle():
     global remaining
     global diff
+    global scale_status
     dashboard.value = "Cycles Remaining: " + str(int(length.value)-remaining) + " (" + str(round((int(length.value)-remaining)*(int(delay.value)+int(dwell.value))/60,1)) + " minutes)"
     last.value = "Last Dose: " + str(diff) + " grams"
     if remaining<int(length.value):
@@ -170,7 +174,7 @@ def calculateMins():
 def writedata(count):
     global diff
     global prev
-    
+    global usb_status
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
     x = ser.readline()
@@ -183,7 +187,7 @@ def writedata(count):
     except ValueError:
         x = prev
         diff = 0
-    global usb_status
+   
     print(x)
     scale.value = "Current Weight: " +str(x) + " grams"
     data = str(count) + ","+ current_time + ","+ str(x) + "," + str(diff) + "\n"
@@ -207,8 +211,8 @@ delay = TextBox(box1, align="left", width = 15)
 delay.text_size = 50
 delay.focus()
 text_delay2 = Text(box1, text = "seconds", align="left", size = 50)
-
-cb = ButtonGroup(app, options=["Touchless","Manual"], selected="Manual", align= "right", grid=[0,2])
+box12 = Box(app, border = True, grid=[0,2], align = "right")
+cb = ButtonGroup(box12, options=["Touchless","Manual"], selected="Manual")
 cb.text_size = 25
 
 box11 = Box(app,border = True, grid=[0,3],align="left")
