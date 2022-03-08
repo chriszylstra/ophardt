@@ -2,3 +2,4 @@
 python ".\camera.py"
 pause
 pause
+pause
