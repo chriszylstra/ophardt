@@ -1,4 +1,8 @@
-from guizero import App, Text, TextBox, PushButton, info, Box, CheckBox, ButtonGroup
+try:
+    from guizero import App, Text, TextBox, PushButton, info, Box, CheckBox, ButtonGroup
+except ImportError:
+    print("You need guizero. Install it with 'pip3 install guizero'")
+    exit()
 from datetime import date
 from datetime import datetime
 import time
