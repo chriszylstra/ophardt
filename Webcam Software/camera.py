@@ -1,4 +1,9 @@
-import cv2
+try:
+    import cv2
+except ImportError:
+    print("You need cv2. Install it with 'pip install opencv-python'")
+    exit()
+    
 import os
 import time
 import pathlib
@@ -7,8 +12,14 @@ from datetime import datetime
 
 now = datetime.now()
 dt = now.strftime("%d_%m_%Y")
-Path("images\\" + dt).mkdir(parents=True, exist_ok = True)
-filepath = "images\\" + dt + "\\"
+if os.name in ('nt', 'dos'):
+    Path("images\\" + dt).mkdir(parents=True, exist_ok = True)
+    filepath = "images\\" + dt + "\\"
+else:
+    Path("images/" + dt).mkdir(parents=True, exist_ok = True)
+    filepath = "images/" + dt + "/"
+    
+
 
 
 camera = cv2.VideoCapture(0,cv2.CAP_DSHOW)
