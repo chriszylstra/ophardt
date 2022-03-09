@@ -15,19 +15,11 @@ cam = cv2.VideoCapture(0)
 
 now = datetime.now()
 dt = now.strftime("%d_%m_%Y")
-
+os.system('clear')
 delay = input("Enter the delay time (seconds) between photos: ")
+os.system('clear')
 Path("/home/pi/Pictures/images/").mkdir(parents=True, exist_ok = True)
 filepath = "images/" + dt + "/"
-
-
-def clearConsole():
-    command = 'clear'
-    os.system(command)
-    
-clearConsole()
-delay = input("Enter the delay time (seconds) between photos: ")
-clearConsole()
 
 print("----------------------------Webcam Autocapture-----------------------------")
 print("")
@@ -42,7 +34,7 @@ print("Used for Pumpdown testers in creating timelapses.")
 print("")
 print("*****")
 print ("Press CTRL+C in this window to quit.")
-print ("Photos location: /home/pi/Documents/" + filepath)
+print ("Photos location: /home/pi/Pictures/" + filepath)
 print ("Capturing every: " + delay + " seconds.")
 print("*****")
 
