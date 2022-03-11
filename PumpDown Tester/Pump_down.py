@@ -18,6 +18,7 @@ app = App(title= "Station ####", layout = "grid")
 
 usb_status = False
 scale_status = False
+camera_status = False
 
 def activate():
     GPIO.setmode(GPIO.BCM)
@@ -217,14 +218,18 @@ delay.text_size = 50
 delay.focus()
 text_delay2 = Text(box1, text = "seconds", align="left", size = 50)
 box12 = Box(app, border = True, grid=[0,2], align = "right")
-cb = ButtonGroup(box12, options=["Touchless","Manual"], selected="Manual")
+cb = ButtonGroup(box12, options=["Touchless","  Manual "], selected="Manual")
 cb.text_size = 25
+camera = CheckBox(box12, text=" Use Camera ", align = "right")
+camera.text_size = 25
+camera.value = 0
 
 box11 = Box(app,border = True, grid=[0,3],align="left")
 text_dwell = Text(box11, text = "Dwell:          ", align = "left", size= 50)
 dwell = TextBox(box11, align="left", width = 15)
 dwell.text_size = 50
 text_dwell2 = Text(box11, text = "seconds", align = "left", size=50)
+
 
 
 blanktext11 = Text(app, text="", size = 40, grid=[0,4])
