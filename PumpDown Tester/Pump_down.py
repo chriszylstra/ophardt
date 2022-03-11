@@ -14,8 +14,8 @@ import re
 
 GPIO.setwarnings(False)
 
-app = App(title= "Pump Down Tester", layout = "grid")
-app.set_full_screen()
+app = App(title= "Station ####", layout = "grid")
+
 usb_status = False
 scale_status = False
 
@@ -271,7 +271,7 @@ box4 = Box(app, layout = "grid", border = True, grid=[0,10], align = "left")
 dashboard = Text(box4, text = "Cycles Remaining: " + length.value, grid=[0,0], size = 20,align= "left")
 scale = Text(box4, text = "Scale Value: ", grid=[0,1], size = 20, align = "left")
 last = Text(box4, text = "Last Dose: ", grid = [0,2], size = 20, align = "left")
-blanktext5 = Text(app, text="", size =40, grid = [0,12])
+blanktext5 = Text(app, text="", size =30, grid = [0,12])
 
 exiter = PushButton(app, command=exit_but, text = "Exit", width = 20, height = 2, grid=[0,13], align = "bottom")
 exiter.text_size = 20
