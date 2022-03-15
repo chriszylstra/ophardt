@@ -1,0 +1,15 @@
+raspberry pi setup
+
+##taskbar config: temp & resource monitors
+## vnc viewer isntall: https://www.realvnc.com/en/connect/download/viewer/raspberrypi/
+rpi-update
+sudo apt-get update
+sudo apt-get install unattended-upgrades
+sudo dpkg-reconfigure --priority=low unattended-upgrades
+sudo apt-get full-upgrade
+sudo apt install python3 idle3
+
+
+sudo nano /boot/config.txt
+arm_freq = 1200
+over_voltage=4
