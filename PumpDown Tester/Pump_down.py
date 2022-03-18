@@ -3,6 +3,12 @@ try:
 except ImportError:
     print("You need guizero. Install it with 'pip3 install guizero'")
     exit()
+try:
+    import cv2
+except ImportError:
+    print("You need cv2. Install it with 'pip install opencv-python --prefer-binary'")
+    exit()
+    
 from datetime import date
 from datetime import datetime
 import time
@@ -10,15 +16,34 @@ import RPi.GPIO as GPIO
 import csv
 import serial
 import re
+import os
+import pathlib
+from pathlib import Path
 
 
 GPIO.setwarnings(False)
 
-app = App(title= "Station ####", layout = "grid")
+app = App(title= "Station 3", layout = "grid")
 
 usb_status = False
 scale_status = False
 camera_status = False
+
+
+def checkCam():
+    print("HI")
+    cam1 = cv2.VideoCapture(0)
+    if not(cam1.isOpened()):
+        info("InfoBox", "Error opening camera.")
+        return
+    cam1.set(3,1920)
+    cam1.set(4,1080)
+    now = datetime.now()
+    dt = now.strftime("%d_%m_%Y")
+    delay = input("Enter the delay time (seconds) between photos: ")
+    Path("/home/pi/Pictures/images/"+dt).mkdir(parents=True, exist_ok = True)
+    filepath = "images/" + dt + "/"
+        
 
 def activate():
     GPIO.setmode(GPIO.BCM)
@@ -65,6 +90,10 @@ def start_prog():
     global remaining
     global usb_status
     global serial_status
+
+    if camera.value:
+        checkCam()
+        
     if delay.value == "":
         app.warn("Warning", "Please enter delay value.")
         delay.focus()
@@ -218,11 +247,12 @@ delay.text_size = 50
 delay.focus()
 text_delay2 = Text(box1, text = "seconds", align="left", size = 50)
 box12 = Box(app, border = True, grid=[0,2], align = "right")
-cb = ButtonGroup(box12, options=["Touchless","  Manual "], selected="Manual")
+cb = ButtonGroup(box12, options=["Touchless","Manual"], selected="Manual")
 cb.text_size = 25
 camera = CheckBox(box12, text=" Use Camera ", align = "right")
 camera.text_size = 25
 camera.value = 0
+photoDelay = TextBox(box12, width = 3, align = "right")
 
 box11 = Box(app,border = True, grid=[0,3],align="left")
 text_dwell = Text(box11, text = "Dwell:          ", align = "left", size= 50)
@@ -276,7 +306,7 @@ box4 = Box(app, layout = "grid", border = True, grid=[0,10], align = "left")
 dashboard = Text(box4, text = "Cycles Remaining: " + length.value, grid=[0,0], size = 20,align= "left")
 scale = Text(box4, text = "Scale Value: ", grid=[0,1], size = 20, align = "left")
 last = Text(box4, text = "Last Dose: ", grid = [0,2], size = 20, align = "left")
-blanktext5 = Text(app, text="", size =30, grid = [0,12])
+#blanktext5 = Text(app, text="", size =30, grid = [0,12])
 
 exiter = PushButton(app, command=exit_but, text = "Exit", width = 20, height = 2, grid=[0,13], align = "bottom")
 exiter.text_size = 20
