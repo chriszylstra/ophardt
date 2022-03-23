@@ -1,3 +1,15 @@
+###############################################################
+## Ophardt Hygiene Technologies Inc.
+## Written by Chris Zylstra, February 2022.
+## This software is provided under "The BEER-WARE LICENSE":
+## czylstra@ophardt.com wrote this file. As long as you retain this notice
+## you can do whatever you want with this stuff. If we meet some day,
+## and you think its worth it, you can buy me a beer in return.
+## The following code is provided with NO WARRANTY WHATSOEVER.
+## Made with love, and midi-chlorians:
+## -Chris Zylstra (engineer, not a programmer)
+###############################################################
+
 try:
     from guizero import App, Text, TextBox, PushButton, info, Box, CheckBox, ButtonGroup
 except ImportError:
@@ -20,16 +32,16 @@ import os
 import pathlib
 from pathlib import Path
 
-
 GPIO.setwarnings(False)
 
-app = App(title= "Station 3", layout = "grid")
+app = App(title= "Henkel Station 1", layout = "grid")
+app.set_full_screen()
 
 usb_status = False
 scale_status = False
 camera_status = False
 
-
+#Not used right now, working on integrating a webcam into the station. 
 def checkCam():
     print("HI")
     cam1 = cv2.VideoCapture(0)
@@ -44,26 +56,34 @@ def checkCam():
     Path("/home/pi/Pictures/images/"+dt).mkdir(parents=True, exist_ok = True)
     filepath = "images/" + dt + "/"
         
-
+#Extend the arm
 def activate():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.HIGH)
     
-
+#Retract the arm
 def deactivate():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.LOW)
 
+#Exit button code
 def exit_but():
     activate()
     app.destroy()
     exit()
 
+#Setting up serial connection
 try:
-    ser = serial.Serial(port='/dev/ttyUSB0', baudrate = 9600, parity=serial.PARITY_ODD, stopbits = serial.STOPBITS_ONE, bytesize=serial.SEVENBITS)
+    
+    #Sartorious Scale
+    #ser = serial.Serial(port='/dev/ttyUSB0', baudrate = 9600, parity=serial.PARITY_ODD, stopbits = serial.STOPBITS_ONE, bytesize=serial.SEVENBITS, timeout = 2)
+    
+    #Kern Scale
+    ser = serial.Serial(port='/dev/ttyUSB0', baudrate = 9600, parity=serial.PARITY_NONE, stopbits= serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout = 2)
     scale_status = True
+    
 except:
     print("No scale connected!")
     app.warn("Warning", "Scale not connected. Continuing without data.")
@@ -75,24 +95,15 @@ filename = ""
 diff = 0
 prev = 0
 
-
+#Called when "Start" button is clicked. 
 def start_prog():
-    buttonStart.disable()
-    buttonStop.enable()
-    buttonPause.enable()
-    length.disable()
-    delay.disable()
-    dwell.disable()
-    programName.disable()
-    cb.disable()
-    print("Start")
     global filename
     global remaining
     global usb_status
     global serial_status
 
-    if camera.value:
-        checkCam()
+   # if camera.value:
+   #     checkCam()
         
     if delay.value == "":
         app.warn("Warning", "Please enter delay value.")
@@ -106,17 +117,31 @@ def start_prog():
     elif programName.value == "":
         app.warn("Warning", "Please enter a filename.")
         programName.focus()
-    else:
+    else:  
         try:
             num = int(delay.value)
             num2 = int(length.value)
             num3 = int(dwell.value)
         except ValueError:
             app.warn("Warning", "Only integers in delay/dwell/cycles.")
-            buttonStart.enable()
-            buttonStop.disable()
-            buttonPause.disable()
             return
+        if int(delay.value) < 2:
+            app.warn("Warning", "Min delay is 2 seconds due to scale communication.")
+            delay.focus()
+            return
+        if int(dwell.value) < 2:
+            app.warn("Warning", "Min dwell is 2 seconds due to scale communication.")
+            dwell.focus()
+            return
+        buttonStart.disable()
+        buttonStop.enable()
+        buttonPause.enable()
+        length.disable()
+        delay.disable()
+        dwell.disable()
+        programName.disable()
+        cb.disable()
+        print("Start")
         calculateMins()
         filename = programName.value + "_"+ d1 + ".csv"
         #info("InfoBox", "Program Started:\n\n" + length.value + " cycles\nat " + delay.value + "s delay / "+ dwell.value + "s dwell."+ " \n\n" + "Filename: " +  filename)
@@ -126,11 +151,11 @@ def start_prog():
                 csv_writer = csv.writer(csv_file, delimiter=',')
                 csv_writer.writerow(headerList)
             usb_status = True;
-        except:
-            app.warn("Warning", "No USB connected. Data will not be saved.\n(Drive must be named exactly 'USB')")
+        except Exception as e:
+            app.warn("Warning","USB not found. Data will not be saved.\n(Drive must be named exactly 'USB')\n\n" + str(e))
             usb_status = False;
         print("USB: " + str(usb_status));
-        print("Serial: " + str(scale_status))
+        print("Scale: " + str(scale_status))
         remaining = 0
         print(cb.value_text)
         if cb.value_text == "Touchless":
@@ -141,7 +166,8 @@ def start_prog():
             app.repeat((int(delay.value)+int(dwell.value))*1000, cycle);
             time.sleep(int(delay.value))
             app.repeat((int(delay.value)+int(dwell.value))*1000, deactivate);
- 
+
+#Loop for each cycle
 def cycle():
     global remaining
     global diff
@@ -154,13 +180,9 @@ def cycle():
         if (scale_status):
             writedata(remaining)
     else:
-        activate()
-        app.cancel(cycle)
-        app.cancel(deactivate)
-        buttonStart.enable()
-        buttonPause.disable()
-        buttonStop.disable()
+        stop_prog()
 
+#Stop button code
 def stop_prog():
     global remaining
     length.enable()
@@ -178,7 +200,8 @@ def stop_prog():
     remaining = 0
     print("stop")
     GPIO.cleanup()
-    
+
+#Pause Button Code
 def pause_prog():
     
     buttonStart.disable()
@@ -206,6 +229,7 @@ def calculateMins():
     minutes = int(length.value) / (int(delay.value) + int(dwell.value))
     minutes = round((minutes/60),1)
 
+#Used to capture the scale data and write to usb. 
 def writedata(count):
     global diff
     global prev
@@ -215,17 +239,17 @@ def writedata(count):
     x = ser.readline()
     #print(x)
     try:
-        x = float(x[3:10])
-        diff = x-prev
+        parsed_x = float(x[3:12])
+        diff = parsed_x-prev
         diff = round(diff,2)
-        prev = x
+        prev = parsed_x
     except ValueError:
-        x = prev
+        parsed_x = prev
         diff = 0
    
-    print(x)
-    scale.value = "Current Weight: " +str(x) + " grams"
-    data = str(count) + ","+ current_time + ","+ str(x) + "," + str(diff) + "\n"
+    print(parsed_x)
+    scale.value = "Current Weight: " +str(parsed_x) + " grams"
+    data = str(count) + ","+ current_time + ","+ str(parsed_x) + "," + str(diff) + "\n"
     if (usb_status):
         with open("/media/pi/USB/" + filename, 'a') as fd:
             fd.write(data)
@@ -233,9 +257,9 @@ def writedata(count):
         
 
 
+##Code following this line is used to draw the GUI and buttons. 
+
 activate()
-
-
 
 blanktext1 = Text(app, text="", size= 20, grid=[0,0])
 
@@ -249,10 +273,11 @@ text_delay2 = Text(box1, text = "seconds", align="left", size = 50)
 box12 = Box(app, border = True, grid=[0,2], align = "right")
 cb = ButtonGroup(box12, options=["Touchless","Manual"], selected="Manual")
 cb.text_size = 25
-camera = CheckBox(box12, text=" Use Camera ", align = "right")
-camera.text_size = 25
-camera.value = 0
-photoDelay = TextBox(box12, width = 3, align = "right")
+#camera = CheckBox(box12, text=" Use Camera ", align = "right")
+#camera.text_size = 25
+#camera.value = 0
+
+#photoDelay = TextBox(box12, width = 3, align = "right")
 
 box11 = Box(app,border = True, grid=[0,3],align="left")
 text_dwell = Text(box11, text = "Dwell:          ", align = "left", size= 50)
@@ -276,8 +301,8 @@ text_programName = Text (box3, text = "Filename:    ",size =50,align="left")
 programName = TextBox(box3, width = 15, align="left")
 text_programName2 = Text(box3, text = "_"+ d1 + ".csv        ", size = 50,align="left")
 programName.text_size = 50
-
-blanktext3 = Text(app, text="", size= 40, grid=[0,8])
+text_fileLocation = Text(app, grid=[0,8], text="Data file saved at: /media/pi/USB/", size = 15, align = "left")
+blanktext3 = Text(app, text="", size= 30, grid=[0,8])
 
 box5 = Box(app, grid=[0,9], width="fill")
 buttonStart = PushButton(box5, command=start_prog, text = "Start Pumpdown", width=20, height=2, align="left")
@@ -312,4 +337,6 @@ exiter = PushButton(app, command=exit_but, text = "Exit", width = 20, height = 2
 exiter.text_size = 20
 exiter.bg = "indian red"
 
+
+## No code allowed past this line.
 app.display()
