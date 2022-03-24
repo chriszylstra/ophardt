@@ -11,7 +11,7 @@
 ###############################################################
 
 try:
-    from guizero import App, Text, TextBox, PushButton, info, Box, CheckBox, ButtonGroup
+    from guizero import *
 except ImportError:
     print("You need guizero. Install it with 'pip3 install guizero'")
     exit()
@@ -19,6 +19,12 @@ try:
     import cv2
 except ImportError:
     print("You need cv2. Install it with 'pip install opencv-python --prefer-binary'")
+    exit()
+try:
+    import board
+    from adafruit_ina219 import ADCResolution, BusVoltageRange, INA219
+except ImportError:
+    print("You need adafruit_ina219. Install it with 'sudo pip3 install adafruit-circuit-python-ina219'")
     exit()
     
 from datetime import date
@@ -32,7 +38,22 @@ import os
 import pathlib
 from pathlib import Path
 
+
 GPIO.setwarnings(False)
+
+GPIO.setup(17,GPIO.OUT)
+GPIO.output(17, GPIO.HIGH)
+
+try:
+    i2c_bus = board.I2C()
+    ina219 = INA219(i2c_bus)
+    ina219.bus_adc_resolution = ADCResolution.ADCRES_12BIT_32S
+    ina219.shunt_adc_resolution = ADCResolution.ADCRES_12BIT_32S
+    ina219.bus_voltage_range = BusVoltageRange.RANGE_16V
+except:
+    pass
+
+GPIO.output(17, GPIO.LOW)
 
 app = App(title= "Henkel Station 1", layout = "grid")
 app.set_full_screen()
@@ -71,6 +92,7 @@ def deactivate():
 #Exit button code
 def exit_but():
     activate()
+    GPIO.output(17,GPIO.LOW)
     app.destroy()
     exit()
 
@@ -145,7 +167,7 @@ def start_prog():
         calculateMins()
         filename = programName.value + "_"+ d1 + ".csv"
         #info("InfoBox", "Program Started:\n\n" + length.value + " cycles\nat " + delay.value + "s delay / "+ dwell.value + "s dwell."+ " \n\n" + "Filename: " +  filename)
-        headerList = ['Number', 'Timestamp', 'Total', 'Difference']
+        headerList = ['Number', 'Timestamp', 'Total', 'Difference','Voltage']
         try:
             with open('/media/pi/USB/'+filename, 'w') as csv_file:
                 csv_writer = csv.writer(csv_file, delimiter=',')
@@ -171,19 +193,37 @@ def start_prog():
 def cycle():
     global remaining
     global diff
-    global scale_status
+    global usb_status
     dashboard.value = "Cycles Remaining: " + str(int(length.value)-remaining) + " (" + str(round((int(length.value)-remaining)*(int(delay.value)+int(dwell.value))/60,1)) + " minutes)"
     last.value = "Last Dose: " + str(diff) + " grams"
     if remaining<int(length.value):
         remaining+=1
+        #measure the voltage before activation
+        voltage = volt_measure()
         activate()
-        if (scale_status):
-            writedata(remaining)
+        if (usb_status):
+            writedata(remaining,voltage)
     else:
         stop_prog()
 
-#Stop button code
+def volt_measure():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(17,GPIO.OUT)
+    try:
+        
+        GPIO.output(17, GPIO.HIGH)
+        time.sleep(5/1000)
+        bus_voltage = ina219.bus_voltage  # voltage on V- (load side)
+        GPIO.output(17, GPIO.LOW)
+        bus_voltage = round(bus_voltage,2)
+        voltage.value = "Battery voltage: " + str(bus_voltage) + " Volts"
+        #print("voltage: " + str(bus_voltage))
+        return bus_voltage
+    except Exception as e:
+        pass
+    
 def stop_prog():
+    GPIO.output(17, GPIO.LOW)
     global remaining
     length.enable()
     delay.enable()
@@ -199,7 +239,6 @@ def stop_prog():
     activate()
     remaining = 0
     print("stop")
-    GPIO.cleanup()
 
 #Pause Button Code
 def pause_prog():
@@ -230,30 +269,33 @@ def calculateMins():
     minutes = round((minutes/60),1)
 
 #Used to capture the scale data and write to usb. 
-def writedata(count):
+def writedata(count,volts):
     global diff
     global prev
     global usb_status
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
-    x = ser.readline()
-    #print(x)
-    try:
-        parsed_x = float(x[3:12])
-        diff = parsed_x-prev
-        diff = round(diff,2)
-        prev = parsed_x
-    except ValueError:
-        parsed_x = prev
-        diff = 0
-   
-    print(parsed_x)
+    if (scale_status):
+        x = ser.readline()
+        try:
+            parsed_x = float(x[3:12])
+            diff = parsed_x-prev
+            diff = round(diff,2)
+            prev = parsed_x
+        except ValueError:
+            parsed_x = prev
+            diff = 0
+        ser.reset_input_buffer()
+    else:
+        parsed_x = 0
+  
+    #print(parsed_x)
     scale.value = "Current Weight: " +str(parsed_x) + " grams"
-    data = str(count) + ","+ current_time + ","+ str(parsed_x) + "," + str(diff) + "\n"
+    data = str(count) + ","+ current_time + ","+ str(parsed_x) + "," + str(diff) + "," + str(volts) + "\n"
     if (usb_status):
         with open("/media/pi/USB/" + filename, 'a') as fd:
             fd.write(data)
-    ser.reset_input_buffer()
+    
         
 
 
@@ -331,6 +373,7 @@ box4 = Box(app, layout = "grid", border = True, grid=[0,10], align = "left")
 dashboard = Text(box4, text = "Cycles Remaining: " + length.value, grid=[0,0], size = 20,align= "left")
 scale = Text(box4, text = "Scale Value: ", grid=[0,1], size = 20, align = "left")
 last = Text(box4, text = "Last Dose: ", grid = [0,2], size = 20, align = "left")
+voltage = Text(box4, text = "Battery voltage: ", grid = [0,3], size =20, align = "left")
 #blanktext5 = Text(app, text="", size =30, grid = [0,12])
 
 exiter = PushButton(app, command=exit_but, text = "Exit", width = 20, height = 2, grid=[0,13], align = "bottom")

@@ -22,6 +22,8 @@ filepath = "images\\" + dt + "\\"
 
 
 camera = cv2.VideoCapture(0,cv2.CAP_DSHOW)
+camera.set(3,1920)
+camera.set(4,1080)
 
 def clearConsole():
     command = 'clear'
@@ -39,7 +41,7 @@ print("Software written by Chris Zylstra. February 2022.")
 print("")
 print("")
 print("WARNING: Leaving this program running may consume large amounts of disk space.")
-print("Images are ~70KB each. (1GB = ~ 14,000 photos)")
+print("Images are ~420KB each. (1GB = ~ 2,500 photos)")
 print("")
 print("This program captures and saves the webcam and saves it to a directory.")
 print("Used for Pumpdown testers in creating timelapses.")
