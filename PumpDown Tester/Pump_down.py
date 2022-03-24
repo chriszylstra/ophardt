@@ -200,6 +200,7 @@ def cycle():
         remaining+=1
         #measure the voltage before activation
         voltage = volt_measure()
+        GPIO.output(17,GPIO.LOW)
         activate()
         if (usb_status):
             writedata(remaining,voltage)
@@ -220,7 +221,8 @@ def volt_measure():
         #print("voltage: " + str(bus_voltage))
         return bus_voltage
     except Exception as e:
-        pass
+        voltage.value = "Battery voltage: error"
+        return 0
     
 def stop_prog():
     GPIO.output(17, GPIO.LOW)
