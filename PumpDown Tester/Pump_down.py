@@ -31,15 +31,19 @@ except ImportError:
     )
     exit()
 
-from datetime import date
-from datetime import datetime
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    print(
+        "This software only runs on Raspberry Pi. Feel free to modify it to run on something else! :)"
+    )
+    exit()
+
 import time
-import RPi.GPIO as GPIO
 import csv
 import serial
-import re
-import os
-import pathlib
+from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 GPIO.setwarnings(False)
@@ -95,7 +99,6 @@ try:
     scale_status = True
 except:
     app.warn("Warning", "Scale not connected. Continuing without data.")
-    scale_status = False
 
 
 # Not used right now, working on integrating a webcam into the station.
@@ -149,6 +152,8 @@ def start_prog():
     global remaining
     global usb_status
     global serial_status
+    global voltmeter_status
+    global camera_status
 
     # if camera.value:
     #     checkCam()
@@ -207,11 +212,8 @@ def start_prog():
                 "USB not found. Data will not be saved.\n(Drive must be named exactly 'USB')\n\n"
                 + str(e),
             )
-            usb_status = False
-        print("USB: " + str(usb_status))
-        print("Scale: " + str(scale_status))
+        usbStatus.value = "USB: " + str(usb_status)
         remaining = 0
-        print(cb.value_text)
         if cb.value_text == "Touchless":
             app.repeat((int(delay.value) + int(dwell.value)) * 1000,
                        deactivate)
@@ -440,11 +442,11 @@ buttonStop.disable()
 
 box6 = Box(app, grid=[0, 11], width="fill")
 buttonIn = PushButton(box6,
-                      command=deactivate,
                       text="Extend Arm",
                       width=10,
                       height=1,
                       align="left")
+
 buttonIn.bg = "royal blue"
 buttonOut = PushButton(box6, command=activate, text="Retract Arm")
 buttonOut.bg = "royal blue"
@@ -465,28 +467,24 @@ voltage = Text(box4,
                size=20,
                align="left")
 
-box41 = Box(app, layout="grid", border=True, grid=[0, 11], align="left")
+box41 = Box(app, layout="grid", border=True, grid=[0, 10], align="right")
+header = Text(box41, text="Device Status", grid=[0, 0], align="top")
 scaleStatus = Text(box41,
-                   text="Scale Status: ",
-                   grid=[0, 0],
-                   size=20,
+                   text="Scale: " + str(scale_status),
+                   grid=[0, 1],
                    align="left")
 usbStatus = Text(box41,
-                 text="USB Status: ",
-                 grid=[0, 1],
-                 size=20,
+                 text="USB: " + str(usb_status),
+                 grid=[0, 2],
                  align="left")
 multimeterStatus = Text(box41,
-                        text="Multimeter Status: ",
-                        grid=[0, 2],
-                        size=20,
+                        text="Multimeter: " + str(voltmeter_status),
+                        grid=[0, 3],
                         align="left")
 cameraStatus = Text(box41,
-                    text="Camera Status: ",
-                    grid=[0, 3],
-                    size=20,
+                    text="Camera: " + str(camera_status),
+                    grid=[0, 4],
                     align="left")
-# blanktext5 = Text(app, text="", size =30, grid = [0,12])
 
 exiter = PushButton(app,
                     command=exit_but,
