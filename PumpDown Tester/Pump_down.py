@@ -39,6 +39,7 @@ import time
 import csv
 import serial
 import os
+import socket
 from datetime import date
 from datetime import datetime
 from pathlib import Path
@@ -57,8 +58,10 @@ filename = ""
 diff = 0
 prev = 0
 
-app = App(title="###", layout="grid")
-app.set_full_screen()
+app = App(title=str(socket.gethostname()), layout="grid")
+window = Window(app, title="Information")
+window.hide()
+# app.set_full_screen()
 
 # Setting up i2c multimeter
 try:
@@ -97,7 +100,7 @@ try:
     cam1.set(4, 1080)
     now = datetime.now()
     dt = now.strftime("%d_%m_%Y")
-    #delay = input("Enter the delay time (seconds) between photos: ")
+    # delay = input("Enter the delay time (seconds) between photos: ")
     Path("/home/pi/Pictures/images/" + dt).mkdir(parents=True, exist_ok=True)
     filepath = "images/" + dt + "/"
     camera_status = True
@@ -128,7 +131,17 @@ def deactivate():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.LOW)
-
+###############################################################
+# Ophardt Hygiene Technologies Inc.
+# Written by Chris Zylstra, February 2022.
+# This software is provided under "The BEER-WARE LICENSE":
+# czylstra@ophardt.com wrote this file. As long as you retain this notice
+# you can do whatever you want with this stuff. If we meet some day,
+# and you think its worth it, you can buy me a beer in return.
+# The following code is provided with NO WARRANTY WHATSOEVER.
+# Made with love, and midi-chlorians:
+# -Chris Zylstra (engineer, not a programmer)
+###############################################################
 
 # Exit button code
 
@@ -334,10 +347,13 @@ def writedata(count, volts):
             fd.write(data)
 
 
-# Code following this line is used to draw the GUI and buttons.
+def open_window():
+    window.show()
+
+
 activate()
 
-blanktext1 = Text(app, text="", size=20, grid=[0, 0])
+blanktext1 = Text(app, text="", size=15, align="left", grid=[0, 0])
 
 box1 = Box(app, border=True, grid=[0, 1], align="left")
 text_delay = Text(box1, text="Delay:          ", align="left", size=50)
@@ -346,7 +362,7 @@ delay = TextBox(box1, align="left", width=15)
 delay.text_size = 50
 delay.focus()
 text_delay2 = Text(box1, text="seconds", align="left", size=50)
-box12 = Box(app, border=True, grid=[0, 2], align="right")
+box12 = Box(app, border=True, grid=[0, 1], align="right")
 cb = ButtonGroup(box12, options=["Touchless", "Manual"], selected="Manual")
 cb.text_size = 25
 # camera = CheckBox(box12, text=" Use Camera ", align = "right")
@@ -355,6 +371,7 @@ cb.text_size = 25
 
 # photoDelay = TextBox(box12, width = 3, align = "right")
 
+blanktext01 = Text(app, text="", size=40, grid=[0, 2])
 box11 = Box(app, border=True, grid=[0, 3], align="left")
 text_dwell = Text(box11, text="Dwell:          ", align="left", size=50)
 dwell = TextBox(box11, align="left", width=15)
@@ -404,9 +421,9 @@ buttonOut.bg = "royal blue"
 blanktext4 = Text(app, text="", size=40, grid=[0, 10])
 
 box4 = Box(app, layout="grid", border=True, grid=[0, 10], align="left")
-dashboard = Text(box4, text="Cycles Remaining: " + length.value, grid=[0, 0], size=20, align="left")
-scale = Text(box4, text="Scale Value: ", grid=[0, 1], size=20, align="left")
-last = Text(box4, text="Last Dose: ", grid=[0, 2], size=20, align="left")
+dashboard = Text(box4, text="Cycles remaining: " + length.value, grid=[0, 0], size=20, align="left")
+scale = Text(box4, text="Scale value: ", grid=[0, 1], size=20, align="left")
+last = Text(box4, text="Last dose: ", grid=[0, 2], size=20, align="left")
 voltage = Text(box4, text="Battery voltage: ", grid=[0, 3], size=20, align="left")
 
 box41 = Box(app, layout="grid", border=True, grid=[0, 10], align="right")
@@ -430,6 +447,12 @@ if camera_status:
 exiter = PushButton(app, command=exit_but, text="Exit", width=20, height=2, grid=[0, 13], align="bottom")
 exiter.text_size = 20
 exiter.bg = "indian red"
+
+date = Text(app, text="Build Date: 30 March 2022", size=15, align="left", grid=[0, 14])
+version = Text(app, text="Version: 1.0.3", size=15, align="left", grid=[0, 15])
+information = PushButton(app, command=open_window, text="Info", width=2, height=1, grid=[0, 15], align="left")
+infotext = Text(window, text="###############################################################\n# Ophardt Hygiene Technologies Inc.\n# Written by Chris Zylstra, February 2022.\n# This software is provided under 'The BEER-WARE LICENSE':\n# czylstra@ophardt.com wrote this file. As long as you retain this notice\n# you can do whatever you want with this stuff. If we meet some day,\n# and you think its worth it, you can buy me a beer in return.\n# The following code is provided with NO WARRANTY WHATSOEVER.\n# Made with love, and midi-chlorians:\n# -Chris Zylstra (engineer, not a programmer)\n###############################################################", align="left")
+information.bg = "light blue"
 
 # No code allowed past this line.
 app.display()
