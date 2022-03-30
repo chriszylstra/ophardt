@@ -1,5 +1,4 @@
 @echo off 
-python ".\camera.py"
-pause
+python ".\camera_windows.py"
 pause
 
