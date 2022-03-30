@@ -11,37 +11,34 @@
 ###############################################################
 
 try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    print("This software only runs on Raspberry Pi. Feel free to modify it to run on something else! :)")
+    exit()
+
+try:
     from guizero import *
 except ImportError:
     print("You need guizero. Install it with 'pip3 install guizero'")
     exit()
+
 try:
     import cv2
 except ImportError:
-    print(
-        "You need cv2. Install it with 'pip install opencv-python --prefer-binary'"
-    )
+    print("You need cv2. Install it with 'pip install opencv-python --prefer-binary'")
     exit()
+
 try:
     import board
     from adafruit_ina219 import *
 except ImportError:
-    print(
-        "You need adafruit_ina219. Install it with 'sudo pip3 install adafruit-circuitpython-ina219'"
-    )
-    exit()
-
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    print(
-        "This software only runs on Raspberry Pi. Feel free to modify it to run on something else! :)"
-    )
+    print("You need adafruit_ina219. Install it with 'sudo pip3 install adafruit-circuitpython-ina219'")
     exit()
 
 import time
 import csv
 import serial
+import os
 from datetime import date
 from datetime import datetime
 from pathlib import Path
@@ -63,7 +60,7 @@ prev = 0
 app = App(title="###", layout="grid")
 app.set_full_screen()
 
-#Setting up i2c multimeter
+# Setting up i2c multimeter
 try:
     GPIO.output(17, GPIO.HIGH)
     time.sleep(5 / 1000)
@@ -81,54 +78,53 @@ except:
 # Setting up serial connection
 try:
     # Sartorious Scale
-    ser = serial.Serial(
-        port="/dev/ttyUSB0",
-        baudrate=9600,
-        parity=serial.PARITY_ODD,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.SEVENBITS,
-        timeout=2,
-    )
+    # ser = serial.Serial(port="/dev/ttyUSB0",baudrate=9600,parity=serial.PARITY_ODD,
+    #                   stopbits=serial.STOPBITS_ONE,bytesize=serial.SEVENBITS,timeout=2)
+
     # Kern Scale
-    ser = serial.Serial(port='/dev/ttyUSB0',
-                        baudrate=9600,
-                        parity=serial.PARITY_NONE,
-                        stopbits=serial.STOPBITS_ONE,
-                        bytesize=serial.EIGHTBITS,
-                        timeout=2)
+    ser = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE,
+                        stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=2)
     scale_status = True
 except:
     app.warn("Warning", "Scale not connected. Continuing without data.")
 
-
 # Not used right now, working on integrating a webcam into the station.
-def checkCam():
+try:
     cam1 = cv2.VideoCapture(0)
     if not (cam1.isOpened()):
-        info("InfoBox", "Error opening camera.")
-        return
+        raise ValueError('Borked Camera')
     cam1.set(3, 1920)
     cam1.set(4, 1080)
     now = datetime.now()
     dt = now.strftime("%d_%m_%Y")
-    delay = input("Enter the delay time (seconds) between photos: ")
+    #delay = input("Enter the delay time (seconds) between photos: ")
     Path("/home/pi/Pictures/images/" + dt).mkdir(parents=True, exist_ok=True)
     filepath = "images/" + dt + "/"
+    camera_status = True
+except Exception as e:
+    pass
+
+# testing USB
+try:
+    with open("/media/pi/USB/test.csv", "w") as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=",")
+    usb_status = True
+    os.remove("/media/pi/USB/test.csv")
+except Exception as e:
+    app.warn("Warning", "USB not found. Data will not be saved.\n(Drive must be named exactly 'USB')\n\n" + str(e))
 
 
 # Extend the arm
-
-
 def activate():
+    print("extend")
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.HIGH)
 
 
 # Retract the arm
-
-
 def deactivate():
+    print("retract")
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.LOW)
@@ -179,13 +175,11 @@ def start_prog():
             app.warn("Warning", "Only integers in delay/dwell/cycles.")
             return
         if int(delay.value) < 2:
-            app.warn("Warning",
-                     "Min delay is 2 seconds due to scale communication.")
+            app.warn("Warning", "Min delay is 2 seconds due to scale communication.")
             delay.focus()
             return
         if int(dwell.value) < 2:
-            app.warn("Warning",
-                     "Min dwell is 2 seconds due to scale communication.")
+            app.warn("Warning", "Min dwell is 2 seconds due to scale communication.")
             dwell.focus()
             return
         buttonStart.disable()
@@ -199,31 +193,21 @@ def start_prog():
         print("Start")
         calculateMins()
         filename = programName.value + "_" + d1 + ".csv"
-        # info("InfoBox", "Program Started:\n\n" + length.value + " cycles\nat " + delay.value + "s delay / "+ dwell.value + "s dwell."+ " \n\n" + "Filename: " +  filename)
         headerList = ["Number", "Timestamp", "Total", "Difference", "Voltage"]
-        try:
+        if usb_status:
             with open("/media/pi/USB/" + filename, "w") as csv_file:
                 csv_writer = csv.writer(csv_file, delimiter=",")
                 csv_writer.writerow(headerList)
-            usb_status = True
-        except Exception as e:
-            app.warn(
-                "Warning",
-                "USB not found. Data will not be saved.\n(Drive must be named exactly 'USB')\n\n"
-                + str(e),
-            )
         usbStatus.value = "USB: " + str(usb_status)
         remaining = 0
         if cb.value_text == "Touchless":
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000,
-                       deactivate)
+            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
             time.sleep(int(delay.value))
             app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
         else:
             app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
             time.sleep(int(delay.value))
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000,
-                       deactivate)
+            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
 
 
 # Loop for each cycle
@@ -234,17 +218,12 @@ def cycle():
     global diff
     global usb_status
     global voltmeter_status
-    dashboard.value = ("Cycles Remaining: " +
-                       str(int(length.value) - remaining) + " (" + str(
-                           round(
-                               (int(length.value) - remaining) *
-                               (int(delay.value) + int(dwell.value)) / 60,
-                               1,
-                           )) + " minutes)")
+    dashboard.value = ("Cycles Remaining: " + str(int(length.value) - remaining) + " (" +
+                       str(round((int(length.value) - remaining) * (int(delay.value) + int(dwell.value)) / 60, 1,)) + " minutes)")
     last.value = "Last Dose: " + str(diff) + " grams"
     if remaining < int(length.value):
         remaining += 1
-        # measure the voltage before activation
+
         voltage = 0
         if voltmeter_status:
             voltage = volt_measure()
@@ -263,11 +242,11 @@ def volt_measure():
     try:
         GPIO.output(17, GPIO.HIGH)
         time.sleep(5 / 1000)
-        bus_voltage = ina219.bus_voltage  # voltage on V- (load side)
+        bus_voltage = ina219.bus_voltage
         GPIO.output(17, GPIO.LOW)
         bus_voltage = round(bus_voltage, 2)
         voltage.value = "Battery voltage: " + str(bus_voltage) + " Volts"
-        # print("voltage: " + str(bus_voltage))
+
         return bus_voltage
     except Exception as e:
         voltage.value = "Battery voltage: error"
@@ -307,15 +286,13 @@ def pause_prog():
         print("pause")
     else:
         if cb.value_text == "Touchless":
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000,
-                       deactivate)
+            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
             time.sleep(int(delay.value))
             app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
         else:
             app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
             time.sleep(int(delay.value))
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000,
-                       deactivate)
+            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
         buttonPause.text = "Pause"
         print("Resume")
 
@@ -351,8 +328,7 @@ def writedata(count, volts):
 
     # print(parsed_x)
     scale.value = "Current Weight: " + str(parsed_x) + " grams"
-    data = (str(count) + "," + current_time + "," + str(parsed_x) + "," +
-            str(diff) + "," + str(volts) + "\n")
+    data = (str(count) + "," + current_time + "," + str(parsed_x) + "," + str(diff) + "," + str(volts) + "\n")
     if usb_status:
         with open("/media/pi/USB/" + filename, "a") as fd:
             fd.write(data)
@@ -397,55 +373,29 @@ blanktext2 = Text(app, text="", size=40, grid=[0, 6])
 box3 = Box(app, border=True, grid=[0, 7], align="left")
 text_programName = Text(box3, text="Filename:    ", size=50, align="left")
 programName = TextBox(box3, width=15, align="left")
-text_programName2 = Text(box3,
-                         text="_" + d1 + ".csv        ",
-                         size=50,
-                         align="left")
+text_programName2 = Text(box3, text="_" + d1 + ".csv        ", size=50, align="left")
 programName.text_size = 50
-text_fileLocation = Text(app,
-                         grid=[0, 8],
-                         text="Data file saved at: /media/pi/USB/",
-                         size=15,
-                         align="left")
+text_fileLocation = Text(app, grid=[0, 8], text="Data file saved at: /media/pi/USB/", size=15, align="left")
 blanktext3 = Text(app, text="", size=30, grid=[0, 8])
 
 box5 = Box(app, grid=[0, 9], width="fill")
-buttonStart = PushButton(box5,
-                         command=start_prog,
-                         text="Start Pumpdown",
-                         width=20,
-                         height=2,
-                         align="left")
+buttonStart = PushButton(box5, command=start_prog, text="Start Pumpdown", width=20, height=2, align="left")
 buttonStart.bg = "lightgreen"
 buttonStart.text_size = 20
 buttonStart.enable()
 boxGap = Box(box5, width=30, height=3, align="left")
-buttonPause = PushButton(box5,
-                         command=pause_prog,
-                         text="Pause",
-                         width=20,
-                         height=2,
-                         align="left")
+buttonPause = PushButton(box5, command=pause_prog, text="Pause", width=20, height=2, align="left")
 buttonPause.bg = "gold"
 buttonPause.text_size = 20
 buttonPause.disable()
 boxGap2 = Box(box5, width=30, height=3, align="left")
-buttonStop = PushButton(box5,
-                        command=stop_prog,
-                        text="Stop",
-                        width=20,
-                        height=2,
-                        align="left")
+buttonStop = PushButton(box5, command=stop_prog, text="Stop", width=20, height=2, align="left")
 buttonStop.bg = "tomato"
 buttonStop.text_size = 20
 buttonStop.disable()
 
 box6 = Box(app, grid=[0, 11], width="fill")
-buttonIn = PushButton(box6,
-                      text="Extend Arm",
-                      width=10,
-                      height=1,
-                      align="left")
+buttonIn = PushButton(box6, text="Extend Arm", command=deactivate, width=10, height=1, align="left")
 
 buttonIn.bg = "royal blue"
 buttonOut = PushButton(box6, command=activate, text="Retract Arm")
@@ -454,45 +404,30 @@ buttonOut.bg = "royal blue"
 blanktext4 = Text(app, text="", size=40, grid=[0, 10])
 
 box4 = Box(app, layout="grid", border=True, grid=[0, 10], align="left")
-dashboard = Text(box4,
-                 text="Cycles Remaining: " + length.value,
-                 grid=[0, 0],
-                 size=20,
-                 align="left")
+dashboard = Text(box4, text="Cycles Remaining: " + length.value, grid=[0, 0], size=20, align="left")
 scale = Text(box4, text="Scale Value: ", grid=[0, 1], size=20, align="left")
 last = Text(box4, text="Last Dose: ", grid=[0, 2], size=20, align="left")
-voltage = Text(box4,
-               text="Battery voltage: ",
-               grid=[0, 3],
-               size=20,
-               align="left")
+voltage = Text(box4, text="Battery voltage: ", grid=[0, 3], size=20, align="left")
 
 box41 = Box(app, layout="grid", border=True, grid=[0, 10], align="right")
-header = Text(box41, text="Device Status", grid=[0, 0], align="top")
-scaleStatus = Text(box41,
-                   text="Scale: " + str(scale_status),
-                   grid=[0, 1],
-                   align="left")
-usbStatus = Text(box41,
-                 text="USB: " + str(usb_status),
-                 grid=[0, 2],
-                 align="left")
-multimeterStatus = Text(box41,
-                        text="Multimeter: " + str(voltmeter_status),
-                        grid=[0, 3],
-                        align="left")
-cameraStatus = Text(box41,
-                    text="Camera: " + str(camera_status),
-                    grid=[0, 4],
-                    align="left")
+header = Text(box41, text="Device Status", grid=[0, 0], align="left")
+scaleStatus = Text(box41, text="Scale: " + str(scale_status), color="red", grid=[0, 1], align="left")
+if scale_status:
+    scaleStatus.text_color = "green"
 
-exiter = PushButton(app,
-                    command=exit_but,
-                    text="Exit",
-                    width=20,
-                    height=2,
-                    grid=[0, 13],
-                    align="bottom")
+usbStatus = Text(box41, text="USB: " + str(usb_status), color="red", grid=[0, 2], align="left")
+if usb_status:
+    usbStatus.text_color = "green"
+
+multimeterStatus = Text(box41, text="Multimeter: " + str(voltmeter_status), color="red", grid=[0, 3], align="left")
+if voltmeter_status:
+    multimeterStatus.text_color = "green"
+
+cameraStatus = Text(box41, text="Camera: " + str(camera_status), color="red", grid=[0, 4], align="left")
+if camera_status:
+    cameraStatus.text_color = "green"
+
+exiter = PushButton(app, command=exit_but, text="Exit", width=20, height=2, grid=[0, 13], align="bottom")
 exiter.text_size = 20
 exiter.bg = "indian red"
 
