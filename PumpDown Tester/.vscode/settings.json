@@ -7,5 +7,5 @@
     ],
     "python.linting.pylintEnabled": false,
     "python.linting.enabled": false,
-    "python.linting.lintOnSave": false
+    "python.linting.lintOnSave": false,
 }
