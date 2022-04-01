@@ -76,18 +76,7 @@ except:
     GPIO.output(17, GPIO.LOW)
 
 # Setting up serial connection
-try:
-    # Sartorious Scale
-    # ser = serial.Serial(port="/dev/ttyUSB0",baudrate=9600,parity=serial.PARITY_ODD,
-    #                   stopbits=serial.STOPBITS_ONE,bytesize=serial.SEVENBITS,timeout=2)
 
-    # Kern Scale
-    ser = serial.Serial(
-        port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=2)
-    scale_status = True
-except:
-    app.warn("Warning", "Scale not connected. Continuing without data.")
 
 # Not used right now, working on integrating a webcam into the station.
 try:
@@ -117,7 +106,6 @@ except Exception as e:
              str(e))
 
 
-
 def activate():
     """Extends the arm."""
     GPIO.setmode(GPIO.BCM)
@@ -145,7 +133,6 @@ def start_prog():
     global filename
     global remaining
     global usb_status
-    global serial_status
     global voltmeter_status
     global camera_status
 
@@ -174,24 +161,26 @@ def start_prog():
             return
         if int(delay_input.value) < 2:
             app.warn("Warning", "Min delay is 2 seconds due to scale communication.")
-            delay.focus()
+            delay_input.focus()
             return
-        if int(dwell.value) < 2:
+        if int(dwell_input.value) < 2:
             app.warn("Warning", "Min dwell is 2 seconds due to scale communication.")
-            dwell.focus()
+            dwell_input.focus()
             return
-        buttonStart.disable()
-        buttonStop.enable()
-        buttonPause.enable()
-        length.disable()
-        delay.disable()
-        dwell.disable()
-        programName.disable()
-        scale_selector.disable()
-        cb.disable()
-        print("Start")
+        button_start.disable()
+        button_stop.enable()
+        button_pause.enable()
+        length_input.disable()
+        delay_input.disable()
+        dwell_input.disable()
+        filename_input.disable()
+        scale_selector_kern.disable()
+        scale_selector_sart.disable()
+        touchless_selector.disable()
+        manual_selector.disable()
+
         calculateMins()
-        filename = programName.value + "_" + d1 + ".csv"
+        filename = filename_input.value + "_" + d1 + ".csv"
         headerList = ["Number", "Timestamp", "Total", "Difference", "Voltage"]
         if usb_status:
             with open("/media/pi/USB/" + filename, "w") as csv_file:
@@ -199,14 +188,20 @@ def start_prog():
                 csv_writer.writerow(headerList)
         usbStatus.value = "USB: " + str(usb_status)
         remaining = 0
-        if cb.value_text == "Touchless":
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
-            time.sleep(int(delay.value))
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
+        if touchless_selector.bg == "pale green":
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000,
+                deactivate)
+            time.sleep(int(delay_input.value))
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
         else:
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
-            time.sleep(int(delay.value))
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
+            time.sleep(int(delay_input.value))
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000,
+                deactivate)
 
 
 # Loop for each cycle
@@ -219,11 +214,11 @@ def cycle():
     global usb_status
     global voltmeter_status
     dashboard.value = (
-        "Cycles Remaining: " + str(int(length.value) - remaining) + " (" +
-        str(round((int(length.value) - remaining) * (int(delay.value) +
-                                                     int(dwell.value)) / 60, 1,)) + " minutes)")
+        "Cycles Remaining: " + str(int(length_input.value) - remaining) + " (" +
+        str(round((int(length_input.value) - remaining) * (int(delay_input.value) +
+                                                           int(dwell_input.value)) / 60, 1,)) + " minutes)")
     last.value = "Last Dose: " + str(diff) + " grams"
-    if remaining < int(length.value):
+    if remaining < int(length_input.value):
         remaining += 1
 
         voltage = 0
@@ -260,16 +255,18 @@ def stop_prog():
     """Called when the 'stop' button is pressed."""
     GPIO.output(17, GPIO.LOW)
     global remaining
-    length.enable()
-    delay.enable()
-    dwell.enable()
-    programName.enable()
-    cb.enable()
-    buttonStart.enable()
-    buttonStop.disable()
-    buttonPause.disable()
-    scale_selector.enable()
-    buttonPause.text = "Pause"
+    length_input.enable()
+    delay_input.enable()
+    dwell_input.enable()
+    filename_input.enable()
+    scale_selector_kern.enable()
+    scale_selector_sart.enable()
+    touchless_selector.enable()
+    manual_selector.enable()
+    button_start.enable()
+    button_stop.disable()
+    button_pause.disable()
+    button_pause.text = "Pause"
     app.cancel(cycle)
     app.cancel(deactivate)
     activate()
@@ -278,24 +275,30 @@ def stop_prog():
 
 def pause_prog():
     """Called when the pause button is pressed."""
-    buttonStart.disable()
-    buttonStop.enable()
-    if buttonPause.text == "Pause":
+    button_start.disable()
+    button_stop.enable()
+    if button_pause.text == "Pause":
         activate()
         app.cancel(cycle)
         app.cancel(deactivate)
-        buttonPause.text = "Resume"
+        button_pause.text = "Resume"
         print("pause")
     else:
-        if cb.value_text == "Touchless":
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
-            time.sleep(int(delay.value))
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
+        if touchless_selector.bg == "pale green":
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000,
+                deactivate)
+            time.sleep(int(delay_input.value))
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
         else:
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, cycle)
-            time.sleep(int(delay.value))
-            app.repeat((int(delay.value) + int(dwell.value)) * 1000, deactivate)
-        buttonPause.text = "Pause"
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
+            time.sleep(int(delay_input.value))
+            app.repeat(
+                (int(delay_input.value) + int(dwell_input.value)) * 1000,
+                deactivate)
+        button_pause.text = "Pause"
         print("Resume")
 
 
@@ -303,15 +306,17 @@ def calculateMins():
     """Calculates the number of minutes from the cycles and the delay/dwell time."""
     """Remove this function maybe?"""
     global minutes
-    minutes = int(length.value) / (int(delay.value) + int(dwell.value))
+    minutes = int(length_input.value) / (int(delay_input.value) +
+                                         int(dwell_input.value))
     minutes = round((minutes / 60), 1)
 
 
 def writedata(count, volts):
     """Used to capture the scale data and write to usb."""
-    global diffscale_selector
+    global diff
     global prev
     global usb_status
+    global scale_status
     now = datetime.now()
     current_time = now.strftime("%H:%M:%S")
     if scale_status:
@@ -341,142 +346,191 @@ def open_window():
     window.show()
 
 
-def scale_swap():
-    """Used to select Kern/Sartorious scale and their serial parameters."""
-    print("HI")
-    if scale_selector.text == "Kern":
-        scale_selector.text = "Sartorious"
-    else:
-        scale_selector.text = "Kern"
-
-
-
-
-    blank0 = Text(app, text="", size=15, align="left", grid=[0, 0])
-
-    box0 = Box(app, border=True, grid=[0, 1], align="left")
-    delay_front = Text(box0, text="Delay:          ", align="left", size=50)
-    delay_input = TextBox(box0, align="left", width=15)
-    delay_input.text_size = 50
-    delay_input.focus()
-    delay_back = Text(box0, text="seconds", align="left", size=50)
-
-    box1 = Box(app, border=True, grid=[0, 1], align="right")
-    cb = ButtonGroup(box1, options=["Touchless", "Manual"], selected="Manual")
-    cb.text_size = 25
-
-    blank2 = Text(app, text="", size=40, grid=[0, 2])
-
-    box2 = Box(app, border=True, grid=[0, 3], align="left")
-    dwell_front = Text(box2, text="Dwell:          ", align="left", size=50)
-    dwell_input = TextBox(box2, align="left", width=15)
-    dwell_input.text_size = 50
-    dwell_back = Text(box2, text="seconds", align="left", size=50)
-
-    blank3 = Text(app, text="", size=40, grid=[0, 4])
-
-    box3 = Box(app, border=True, grid=[0, 5], align="left")
-    length_front = Text(box3, text="Total Cycles:", align="left", size=50)
-    length_input = TextBox(box3, align="left", width=15)
-    length_input.text_size = 50
-
-    blank4 = Text(app, text="", size=40, grid=[0, 6])
-
-    box4 = Box(app, border=True, grid=[0, 7], align="left")
-    filename_front = Text(box4, text="Filename:    ", size=50, align="left")
-    filename_input = TextBox(box4, width=15, align="left")
-    filename_input.text_size = 50
-    filename_back = Text(
-        box4, text="_" + d1 + ".csv        ", size=50, align="left")
-
-    file_location = Text(
-        app, grid=[0, 8],
-        text="Data file saved at: /media/pi/USB/", size=15, align="left")
-
-    blank5 = Text(app, text="", size=30, grid=[0, 8])
-
-    box5 = Box(app, grid=[0, 9], border=True, layout="grid", align="left")
-    header = Text(box5, text="Device Status", grid=[0, 0], align="left")
-    scaleStatus = Text(box5, text="Scale: " + str(scale_status),
-                       color="red", grid=[0, 1], align="left")
-    if scale_status:
+def activate_kern():
+    scale_selector_kern.bg = "pale green"
+    scale_selector_sart.bg = "white"
+    global ser
+    global scale_status
+    try:
+        ser = serial.Serial(
+            port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=2)
+        scale_status = True
+        scaleStatus.value = "Scale: " + str(scale_status)
         scaleStatus.text_color = "green"
+    except:
+        scale_status = False
+        app.warn("Warning", "Scale not connected. Continuing without data.")
+        scaleStatus.value = "Scale: " + str(scale_status)
+        scaleStatus.text_color = "red"
 
-    usbStatus = Text(box5, text="USB: " + str(usb_status),
-                     color="red", grid=[0, 2], align="left")
-    if usb_status:
-        usbStatus.text_color = "green"
-    multimeterStatus = Text(
-        box5, text="Multimeter: " + str(voltmeter_status),
-        color="red", grid=[0, 3],
-        align="left")
-    if voltmeter_status:
-        multimeterStatus.text_color = "green"
-    cameraStatus = Text(box5, text="Camera: " + str(camera_status),
-                        color="red", grid=[0, 4], align="left")
-    if camera_status:
-        cameraStatus.text_color = "green"
 
-    box6 = Box(app, border=False, grid=[0, 9])
-    scale_selector = PushButton(
-        box6, text="Kern", command=scale_swap, align="left", width=7, height=1)
-    scale_selector.bg = "light blue"
-    scale_selector.text_size = "10"
-    boxGap0 = Box(box6, width=60, height=3, align="left")
-    button_start = PushButton(box6, command=start_prog, text="Start Pumpdown",
-                              width=20, height=2, align="left")
-    button_start.bg = "lightgreen"
-    button_start.text_size = 20
-    button_start.enable()
-    boxGap = Box(box6, width=30, height=3, align="left")
-    buttonPause = PushButton(box6, command=pause_prog, text="Pause",
-                             width=20, height=2, align="left")
-    buttonPause.bg = "gold"
-    buttonPause.text_size = 20
-    buttonPause.disable()
-    boxGap2 = Box(box6, width=30, height=3, align="left")
-    buttonStop = PushButton(box6, command=stop_prog, text="Stop",
-                            width=20, height=2, align="left")
-    buttonStop.bg = "tomato"
-    buttonStop.text_size = 20
-    buttonStop.disable()
+def activate_sart():
+    scale_selector_kern.bg = "white"
+    scale_selector_sart.bg = "pale green"
+    global ser
+    global scale_status
+    try:
+        ser = serial.Serial(
+            port="/dev/ttyUSB0", baudrate=9600, parity=serial.PARITY_ODD,
+            stopbits=serial.STOPBITS_ONE, bytesize=serial.SEVENBITS, timeout=2)
+        scale_status = True
+        scaleStatus.value = "Scale: " + str(scale_status)
+        scaleStatus.text_color = "green"
+    except:
+        scale_status = False
+        app.warn("Warning", "Scale not connected. Continuing without data.")
+        scaleStatus.value = "Scale: " + str(scale_status)
+        scaleStatus.text_color = "red"
 
-    box6 = Box(app, grid=[0, 11], width="fill")
-    buttonIn = PushButton(box6, text="Extend Arm", command=deactivate,
-                          width=10, height=1, align="left")
 
-    buttonIn.bg = "light blue"
-    buttonOut = PushButton(box6, command=activate, text="Retract Arm")
-    buttonOut.bg = "light blue"
+def activate_manual():
+    touchless_selector.bg = "white"
+    manual_selector.bg = "pale green"
 
-    blanktext4 = Text(app, text="", size=40, grid=[0, 10])
 
-    box4 = Box(app, layout="grid", border=True, grid=[0, 10], align="left")
-    dashboard = Text(box4, text="Cycles remaining: " + length_input.value,
-                     grid=[0, 0], size=20, align="left")
-    scale = Text(box4, text="Scale value: ", grid=[0, 1], size=20, align="left")
-    last = Text(box4, text="Last dose: ", grid=[0, 2], size=20, align="left")
-    voltage = Text(box4, text="Battery voltage: ",
-                   grid=[0, 3], size=20, align="left")
+def activate_touchless():
+    touchless_selector.bg = "pale green"
+    manual_selector.bg = "white"
 
-    exiter = PushButton(app, command=exit_but, text="Exit", width=20,
-                        height=2, grid=[0, 13], align="bottom")
-    exiter.text_size = 20
-    exiter.bg = "indian red"
 
-    date = Text(app, text="Build Date: 31 March 2022",
-                size=15, align="left", grid=[0, 14])
-    box41 = Box(app, layout="grid", border=False, grid=[0, 15], align="left")
-    version = Text(box41, text="Version: 1.0.4",
-                   size=15, align="left", grid=[0, 0])
-    information = PushButton(box41, command=open_window, text="Info",
-                             width=2, height=1, grid=[1, 0], align="left")
-    infotext = Text(
-        window, text="Ophardt Hygiene Technologies Inc.\nWritten by Chris Zylstra,\
-        February 2022.\nThis software is provided under The BEER-WARE LICENSE:\
-        \nIf we meet some day, you can buy me a beer in return.\nThe following code\
-        is provided with NO WARRANTY WHATSOEVER.\nMade with love, and midi-chlorians:\
-        \n-Chris Zylstra (engineer, not a programmer)", align="left", width="fill")
-    information.bg = "light blue"
+blank0 = Text(app, text="", size=1, align="left", grid=[0, 0])
 
+box0 = Box(app, border=True, grid=[0, 1], align="left")
+delay_front = Text(box0, text="Delay:          ", align="left", size=50)
+delay_input = TextBox(box0, align="left", width=15)
+delay_input.text_size = 50
+delay_input.focus()
+delay_back = Text(box0, text="seconds", align="left", size=50)
+
+box1 = Box(app, border=True, grid=[0, 3], align="right")
+settings_header = Text(box1, text="Settings", align="top")
+box11 = Box(box1, border=False)
+scale_selector_kern = PushButton(
+    box11, text="Kern", command=activate_kern, width=7,
+    height=1, align="left")
+scale_selector_kern.bg = "pale green"
+scale_selector_kern.text_size = "10"
+scale_selector_sart = PushButton(
+    box11, text="Sartorious", command=activate_sart,
+    width=7, height=1, align="left")
+scale_selector_sart.bg = "white"
+scale_selector_sart.text_size = "10"
+manual_selector = PushButton(box1, text="Manual", command=activate_manual,
+                             width=7, height=1, align="left")
+manual_selector.bg = "pale green"
+touchless_selector = PushButton(
+    box1, text="Touchless", command=activate_touchless, width=7, height=1, align="left")
+touchless_selector.bg = "white"
+
+blank2 = Text(app, text="", size=20, grid=[0, 2])
+
+box2 = Box(app, border=True, grid=[0, 3], align="left")
+dwell_front = Text(box2, text="Dwell:          ", align="left", size=50)
+dwell_input = TextBox(box2, align="left", width=15)
+dwell_input.text_size = 50
+dwell_back = Text(box2, text="seconds", align="left", size=50)
+
+blank3 = Text(app, text="", size=40, grid=[0, 4])
+
+box3 = Box(app, border=True, grid=[0, 5], align="left")
+length_front = Text(box3, text="Total Cycles:", align="left", size=50)
+length_input = TextBox(box3, align="left", width=15)
+length_input.text_size = 50
+
+blank4 = Text(app, text="", size=40, grid=[0, 6])
+
+box4 = Box(app, border=True, grid=[0, 7], align="left")
+filename_front = Text(box4, text="Filename:    ", size=50, align="left")
+filename_input = TextBox(box4, width=15, align="left")
+filename_input.text_size = 50
+filename_back = Text(
+    box4, text="_" + d1 + ".csv        ", size=50, align="left")
+
+file_location = Text(
+    app, grid=[0, 8],
+    text="Data file saved at: /media/pi/USB/", size=15, align="left")
+
+blank5 = Text(app, text="", size=30, grid=[0, 8])
+
+box5 = Box(app, grid=[0, 9], border=True, layout="grid", align="left")
+header = Text(box5, text="Device Status", grid=[0, 0], align="left")
+scaleStatus = Text(box5, text="Scale: " + str(scale_status),
+                   color="red", grid=[0, 1], align="left")
+if scale_status:
+    scaleStatus.text_color = "green"
+
+usbStatus = Text(box5, text="USB: " + str(usb_status),
+                 color="red", grid=[0, 2], align="left")
+if usb_status:
+    usbStatus.text_color = "green"
+multimeterStatus = Text(
+    box5, text="Multimeter: " + str(voltmeter_status),
+    color="red", grid=[0, 3],
+    align="left")
+if voltmeter_status:
+    multimeterStatus.text_color = "green"
+cameraStatus = Text(box5, text="Camera: " + str(camera_status),
+                    color="red", grid=[0, 4], align="left")
+if camera_status:
+    cameraStatus.text_color = "green"
+
+box6 = Box(app, border=False, grid=[0, 9])
+boxGap0 = Box(box6, width=60, height=3, align="left")
+button_start = PushButton(box6, command=start_prog, text="Start Pumpdown",
+                          width=20, height=2, align="left")
+button_start.bg = "lightgreen"
+button_start.text_size = 20
+button_start.enable()
+boxGap = Box(box6, width=30, height=3, align="left")
+button_pause = PushButton(box6, command=pause_prog, text="Pause",
+                          width=20, height=2, align="left")
+button_pause.bg = "gold"
+button_pause.text_size = 20
+button_pause.disable()
+boxGap2 = Box(box6, width=30, height=3, align="left")
+button_stop = PushButton(box6, command=stop_prog, text="Stop",
+                         width=20, height=2, align="left")
+button_stop.bg = "tomato"
+button_stop.text_size = 20
+button_stop.disable()
+
+box6 = Box(app, grid=[0, 10], width="fill")
+button_deactivate = PushButton(box6, text="Extend Arm", command=deactivate,
+                               width=10, height=1, align="left")
+
+button_deactivate.bg = "light blue"
+button_activate = PushButton(box6, command=activate, text="Retract Arm")
+button_activate.bg = "light blue"
+
+box7 = Box(app, layout="grid", border=True, grid=[0, 10], align="left")
+dashboard = Text(box7, text="Cycles remaining: " + length_input.value,
+                 grid=[0, 0], size=20, align="left")
+scale = Text(box7, text="Scale value: ", grid=[0, 1], size=20, align="left")
+last = Text(box7, text="Last dose: ", grid=[0, 2], size=20, align="left")
+voltage = Text(box7, text="Battery voltage: ",
+               grid=[0, 3], size=20, align="left")
+
+blank6 = Text(app, text="", size=20, grid=[0, 11])
+
+exiter = PushButton(app, command=exit_but, text="Exit", width=20,
+                    height=2, grid=[0, 12], align="bottom")
+exiter.text_size = 20
+exiter.bg = "indian red"
+
+date = Text(app, text="Build Date: 1 April 2022",
+            size=15, align="left", grid=[0, 13])
+box41 = Box(app, layout="grid", border=False, grid=[0, 14], align="left")
+version = Text(box41, text="Version: 1.0.5",
+               size=15, align="left", grid=[0, 0])
+information = PushButton(box41, command=open_window, text="Info",
+                         width=2, height=1, grid=[1, 0], align="left")
+infotext = Text(
+    window, text="Ophardt Hygiene Technologies Inc.\nWritten by Chris Zylstra,\
+ February 2022.\nThis software is provided under The BEER-WARE LICENSE:\
+\nIf we meet some day, you can buy me a beer in return.\nThe following code\
+is provided with NO WARRANTY WHATSOEVER.\nMade with love, and midi-chlorians:\
+\n-Chris Zylstra (engineer, not a programmer)", align="left", width="fill")
+information.bg = "light blue"
+activate_sart()
 app.display()
