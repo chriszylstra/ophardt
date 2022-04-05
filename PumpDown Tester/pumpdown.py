@@ -1,4 +1,3 @@
-"""pumpdown.py"""
 # Ophardt Hygiene Technologies Inc.
 # Written by Chris Zylstra, February 2022.
 # This software is provided under "The BEER-WARE LICENSE":
@@ -13,7 +12,6 @@ import sys
 import csv
 import os
 import socket
-from datetime import date
 from datetime import datetime
 from pathlib import Path
 import serial
@@ -25,7 +23,7 @@ except ImportError:
 Feel free to modify it to run on something else! :)")
 
 try:
-    from guizero import App, Window, PushButton, Text, TextBox, Box, ButtonGroup
+    from guizero import App, Window, PushButton, Text, TextBox, Box
 except ImportError:
     sys.exit("You need guizero. Install it with 'pip3 install guizero'")
 
@@ -37,23 +35,20 @@ except ImportError:
 
 try:
     import board
-    from adafruit_ina219 import INA219, ADCResolution, BusVoltageRange
+    from adafruit_ina219 import INA219
 except ImportError:
     sys.exit("You need adafruit_ina219. Install it with 'sudo \
 pip3 install adafruit-circuitpython-ina219'")
 
-GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
 GPIO.setup(17, GPIO.OUT)
-GPIO.output(17, GPIO.LOW)
 
 usb_status = False
 scale_status = False
 camera_status = False
 voltmeter_status = False
-today = date.today()
-d1 = today.strftime("%d-%b-%Y")
+
 filename = ""
-diff = 0
 prev = 0
 
 app = App(title=str(socket.gethostname()), layout="grid")
@@ -64,18 +59,11 @@ window.hide()
 # Setting up i2c multimeter
 try:
     GPIO.output(17, GPIO.HIGH)
-    time.sleep(5 / 1000)
-    i2c_bus = board.I2C()
-    ina219 = INA219(i2c_bus)
-    ina219.bus_adc_resolution = ADCResolution.ADCRES_12BIT_32S
-    ina219.shunt_adc_resolution = ADCResolution.ADCRES_12BIT_32S
-    ina219.bus_voltage_range = BusVoltageRange.RANGE_16V
+    ina219 = INA219(board.I2C())
     GPIO.output(17, GPIO.LOW)
     voltmeter_status = True
-except:
+except Exception as e:
     GPIO.output(17, GPIO.LOW)
-
-# Setting up serial connection
 
 
 # Not used right now, working on integrating a webcam into the station.
@@ -85,11 +73,8 @@ try:
         raise ValueError('Borked Camera')
     cam1.set(3, 1920)
     cam1.set(4, 1080)
-    now = datetime.now()
-    dt = now.strftime("%d_%m_%Y")
-    # delay = input("Enter the delay time (seconds) between photos: ")
-    Path("/home/pi/Pictures/images/" + dt).mkdir(parents=True, exist_ok=True)
-    filepath = "images/" + dt + "/"
+    Path("/home/pi/Pictures/images/" + datetime.now().strftime("%d_%m_%Y")
+         ).mkdir(parents=True, exist_ok=True)
     camera_status = True
 except:
     pass
@@ -107,21 +92,16 @@ except Exception as e:
 
 
 def activate():
-    """Extends the arm."""
-    GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.HIGH)
 
 
 def deactivate():
-    """Retracts the arm."""
-    GPIO.setmode(GPIO.BCM)
     GPIO.setup(4, GPIO.OUT)
     GPIO.output(4, GPIO.LOW)
 
 
-def exit_but():
-    """Safetly exits the program"""
+def exit_safely():
     GPIO.output(17, GPIO.LOW)
     activate()
     app.destroy()
@@ -129,7 +109,6 @@ def exit_but():
 
 
 def start_prog():
-    """Called when 'start' button is clicked."""
     global filename
     global remaining
     global usb_status
@@ -138,77 +117,65 @@ def start_prog():
 
     # if camera.value:
     #     checkCam()
-
-    if delay_input.value == "":
-        app.warn("Warning", "Please enter delay value.")
-        delay_input.focus()
-    elif dwell_input.value == "":
-        app.warn("Warning", "Please enter dwell value.")
-        dwell_input.focus()
-    elif length_input.value == "":
-        app.warn("Warning", "Please enter total cycles.")
-        length_input.focus()
-    elif filename_input.value == "":
-        app.warn("Warning", "Please enter a filename.")
-        filename_input.focus()
-    else:
-        try:
-            num = int(delay_input.value)
-            num2 = int(length_input.value)
-            num3 = int(dwell_input.value)
-        except ValueError:
-            app.warn("Warning", "Only integers in delay/dwell/cycles.")
-            return
-        if int(delay_input.value) < 2:
-            app.warn("Warning", "Min delay is 2 seconds due to scale communication.")
+    try:
+        if str(delay_input.value) == "" or int(delay_input.value) < 2:
+            app.warn("Warning", "Delay value must be an integer larger than 1.")
             delay_input.focus()
             return
-        if int(dwell_input.value) < 2:
-            app.warn("Warning", "Min dwell is 2 seconds due to scale communication.")
+        if str(dwell_input.value) == "" or int(dwell_input.value) < 2:
+            app.warn("Warning", "Dwell value must be an integer larger than 1.")
             dwell_input.focus()
             return
-        button_start.disable()
-        button_stop.enable()
-        button_pause.enable()
-        length_input.disable()
-        delay_input.disable()
-        dwell_input.disable()
-        filename_input.disable()
-        scale_selector_kern.disable()
-        scale_selector_sart.disable()
-        touchless_selector.disable()
-        manual_selector.disable()
+        if length_input.value == "" or int(length_input.value) < 2:
+            app.warn("Warning", "Total cycles must be an integer larger than 1.")
+            length_input.focus()
+            return
+        if filename_input.value == "" and usb_status:
+            app.warn("Warning", "Please enter a filename.")
+            filename_input.focus()
+            return
+    except ValueError:
+        app.warn("Warning", "Only integers in delay/dwell/cycles.")
+        return
 
-        calculateMins()
-        filename = filename_input.value + "_" + d1 + ".csv"
+    button_start.disable()
+    button_stop.enable()
+    button_pause.enable()
+    length_input.disable()
+    delay_input.disable()
+    dwell_input.disable()
+    filename_input.disable()
+    scale_selector_kern.disable()
+    scale_selector_sart.disable()
+    touchless_selector.disable()
+    manual_selector.disable()
+
+    if usb_status:
+        filename = filename_input.value + "_" + datetime.today().strftime("%d-%b-%Y") + ".csv"
         headerList = ["Number", "Timestamp", "Total", "Difference", "Voltage"]
-        if usb_status:
-            with open("/media/pi/USB/" + filename, "w") as csv_file:
-                csv_writer = csv.writer(csv_file, delimiter=",")
-                csv_writer.writerow(headerList)
-        usbStatus.value = "USB: " + str(usb_status)
-        remaining = 0
-        if touchless_selector.bg == "pale green":
-            app.repeat(
-                (int(delay_input.value) + int(dwell_input.value)) * 1000,
-                deactivate)
-            time.sleep(int(delay_input.value))
-            app.repeat(
-                (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
-        else:
-            app.repeat(
-                (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
-            time.sleep(int(delay_input.value))
-            app.repeat(
-                (int(delay_input.value) + int(dwell_input.value)) * 1000,
-                deactivate)
+        with open("/media/pi/USB/" + filename, "w") as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=",")
+            csv_writer.writerow(headerList)
+    usbStatus.value = "USB: " + str(usb_status)
+    remaining = 0
+    if touchless_selector.bg == "pale green":
+        app.repeat(
+            (int(delay_input.value) + int(dwell_input.value)) * 1000,
+            deactivate)
+        time.sleep(int(delay_input.value))
+        app.repeat(
+            (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
+    else:
+        app.repeat(
+            (int(delay_input.value) + int(dwell_input.value)) * 1000, cycle)
+        time.sleep(int(delay_input.value))
+        app.repeat(
+            (int(delay_input.value) + int(dwell_input.value)) * 1000,
+            deactivate)
 
 
 # Loop for each cycle
-
-
 def cycle():
-    """Main loop for each activation"""
     global remaining
     global diff
     global usb_status
@@ -217,7 +184,7 @@ def cycle():
         "Cycles Remaining: " + str(int(length_input.value) - remaining) + " (" +
         str(round((int(length_input.value) - remaining) * (int(delay_input.value) +
                                                            int(dwell_input.value)) / 60, 1,)) + " minutes)")
-    last.value = "Last Dose: " + str(diff) + " grams"
+
     if remaining < int(length_input.value):
         remaining += 1
 
@@ -234,8 +201,6 @@ def cycle():
 
 
 def volt_measure():
-    """Get the value of the i2c voltmeter."""
-    GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
     try:
         GPIO.output(17, GPIO.HIGH)
@@ -252,7 +217,6 @@ def volt_measure():
 
 
 def stop_prog():
-    """Called when the 'stop' button is pressed."""
     GPIO.output(17, GPIO.LOW)
     global remaining
     length_input.enable()
@@ -274,7 +238,6 @@ def stop_prog():
 
 
 def pause_prog():
-    """Called when the pause button is pressed."""
     button_start.disable()
     button_stop.enable()
     if button_pause.text == "Pause":
@@ -282,7 +245,6 @@ def pause_prog():
         app.cancel(cycle)
         app.cancel(deactivate)
         button_pause.text = "Resume"
-        print("pause")
     else:
         if touchless_selector.bg == "pale green":
             app.repeat(
@@ -299,32 +261,17 @@ def pause_prog():
                 (int(delay_input.value) + int(dwell_input.value)) * 1000,
                 deactivate)
         button_pause.text = "Pause"
-        print("Resume")
-
-
-def calculateMins():
-    """Calculates the number of minutes from the cycles and the delay/dwell time."""
-    """Remove this function maybe?"""
-    global minutes
-    minutes = int(length_input.value) / (int(delay_input.value) +
-                                         int(dwell_input.value))
-    minutes = round((minutes / 60), 1)
 
 
 def writedata(count, volts):
-    """Used to capture the scale data and write to usb."""
-    global diff
     global prev
     global usb_status
     global scale_status
-    now = datetime.now()
-    current_time = now.strftime("%H:%M:%S")
     if scale_status:
         x = ser.readline()
         try:
             parsed_x = float(x[3:12])
-            diff = parsed_x - prev
-            diff = round(diff, 2)
+            diff = round(parsed_x-prev, 2)
             prev = parsed_x
         except ValueError:
             parsed_x = prev
@@ -333,36 +280,16 @@ def writedata(count, volts):
     else:
         parsed_x = 0
     scale.value = "Current Weight: " + str(parsed_x) + " grams"
-    data = (
-        str(count) + "," + current_time + "," + str(parsed_x) + "," + str(diff) + "," +
-        str(volts) + "\n")
+    last.value = "Last Dose: " + str(diff) + " grams"
     if usb_status:
+        data = (str(count) + "," + datetime.now().strftime("%H:%M:%S") + "," + str(parsed_x) + "," +
+                str(diff) + "," + str(volts) + "\n")
         with open("/media/pi/USB/" + filename, "a") as fd:
             fd.write(data)
 
 
 def open_window():
-    """Opens the information window."""
     window.show()
-
-
-def activate_kern():
-    scale_selector_kern.bg = "pale green"
-    scale_selector_sart.bg = "white"
-    global ser
-    global scale_status
-    try:
-        ser = serial.Serial(
-            port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=2)
-        scale_status = True
-        scaleStatus.value = "Scale: " + str(scale_status)
-        scaleStatus.text_color = "green"
-    except:
-        scale_status = False
-        app.warn("Warning", "Scale not connected. Continuing without data.")
-        scaleStatus.value = "Scale: " + str(scale_status)
-        scaleStatus.text_color = "red"
 
 
 def activate_sart():
@@ -377,7 +304,25 @@ def activate_sart():
         scale_status = True
         scaleStatus.value = "Scale: " + str(scale_status)
         scaleStatus.text_color = "green"
-    except:
+    except Exception as e:
+        activate_kern()
+        scaleStatus.value = "Scale: " + str(scale_status)
+        scaleStatus.text_color = "red"
+
+
+def activate_kern():
+    scale_selector_kern.bg = "pale green"
+    scale_selector_sart.bg = "white"
+    global ser
+    global scale_status
+    try:
+        ser = serial.Serial(
+            port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=2)
+        scale_status = True
+        scaleStatus.value = "Scale: " + str(scale_status)
+        scaleStatus.text_color = "green"
+    except Exception as e:
         scale_status = False
         app.warn("Warning", "Scale not connected. Continuing without data.")
         scaleStatus.value = "Scale: " + str(scale_status)
@@ -403,7 +348,7 @@ delay_input.text_size = 50
 delay_input.focus()
 delay_back = Text(box0, text="seconds", align="left", size=50)
 
-box1 = Box(app, border=True, grid=[0, 3], align="right")
+box1 = Box(app, border=True, grid=[1, 3], align="right")
 settings_header = Text(box1, text="Settings", align="top")
 box11 = Box(box1, border=False)
 scale_selector_kern = PushButton(
@@ -445,7 +390,7 @@ filename_front = Text(box4, text="Filename:    ", size=50, align="left")
 filename_input = TextBox(box4, width=15, align="left")
 filename_input.text_size = 50
 filename_back = Text(
-    box4, text="_" + d1 + ".csv        ", size=50, align="left")
+    box4, text="_" + datetime.today().strftime("%d-%b-%Y") + ".csv", size=50, align="left")
 
 file_location = Text(
     app, grid=[0, 8],
@@ -513,15 +458,15 @@ voltage = Text(box7, text="Battery voltage: ",
 
 blank6 = Text(app, text="", size=20, grid=[0, 11])
 
-exiter = PushButton(app, command=exit_but, text="Exit", width=20,
+exiter = PushButton(app, command=exit_safely, text="Exit", width=20,
                     height=2, grid=[0, 12], align="bottom")
 exiter.text_size = 20
 exiter.bg = "indian red"
 
-date = Text(app, text="Build Date: 1 April 2022",
+date = Text(app, text="Build Date: 5 April 2022",
             size=15, align="left", grid=[0, 13])
 box41 = Box(app, layout="grid", border=False, grid=[0, 14], align="left")
-version = Text(box41, text="Version: 1.0.5",
+version = Text(box41, text="Version: 1.0.6",
                size=15, align="left", grid=[0, 0])
 information = PushButton(box41, command=open_window, text="Info",
                          width=2, height=1, grid=[1, 0], align="left")
