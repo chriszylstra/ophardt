@@ -9,6 +9,8 @@ sudo dpkg-reconfigure --priority=low unattended-upgrades
 sudo apt-get full-upgrade
 sudo apt install python3 idle3
 
+sed -i -e 's/\r$//' Pumpdown.sh
+
 
 sudo nano /boot/config.txt
 arm_freq = 1200
