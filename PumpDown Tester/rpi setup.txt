@@ -8,6 +8,7 @@ sudo apt-get install unattended-upgrades
 sudo dpkg-reconfigure --priority=low unattended-upgrades
 sudo apt-get full-upgrade
 sudo apt install python3 idle3
+sudo apt get install python -y
 
 sed -i -e 's/\r$//' Pumpdown.sh
 
@@ -15,3 +16,7 @@ sed -i -e 's/\r$//' Pumpdown.sh
 sudo nano /boot/config.txt
 arm_freq = 1200
 over_voltage=4
+
+
+chmod +x pumpdown.py
+sudo cp pumpdown.py /bin/pumpdown.py
