@@ -291,7 +291,7 @@ def writedata(count, volts):
     if scale_status:
         x = ser.readline()
         try:
-            parsed_x = float(x[3:12])
+            parsed_x = float(x[3:11])
             diff = parsed_x - prev
             diff = round(diff, 2)
             prev = parsed_x
@@ -485,10 +485,10 @@ exiter = PushButton(app, command=exit_but, text="Exit", width=20,
 exiter.text_size = 20
 exiter.bg = "indian red"
 
-date = Text(app, text="Build Date: 21 April 2022",
+date = Text(app, text="Build Date: 12 May 2022",
             size=15, align="left", grid=[0, 13])
 box41 = Box(app, layout="grid", border=False, grid=[0, 14], align="left")
-version = Text(box41, text="Version: 1.0.6.1",
+version = Text(box41, text="Version: 1.1",
                size=15, align="left", grid=[0, 0])
 information = PushButton(box41, command=open_window, text="Info",
                          width=2, height=1, grid=[1, 0], align="left")
