@@ -11,7 +11,6 @@
 # https://github.com/chriszylstra/ophardt/tree/main/PumpDown%20Tester
 
 
-
 import time
 import sys
 import csv
@@ -367,6 +366,7 @@ def activate_touchless():
 
 def use_camera():
     try:
+        global cam1
         cam1 = cv2.VideoCapture(0)
         if not cam1.isOpened():
             raise ValueError('Borked Camera')
@@ -391,9 +391,7 @@ def no_camera():
 
 def take_picture():
     try:
-        cam1 = cv2.VideoCapture(0)
-        cam1.set(3, 1920)
-        cam1.set(4, 1080)
+        global cam1
         ret, image = cam1.read()
         cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX)
         cv2.imwrite('/media/pi/USB/Images/' + datetime.now().strftime("%d_%m_%Y")
