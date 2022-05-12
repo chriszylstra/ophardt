@@ -1,4 +1,5 @@
 12 May 2021 - Version 1.1
 *************************
 -First instance of keeping changelog
--Release
+-Release of Camera functionality and button.
+-Camera takes a photo and stores it in the usb folder every activation if the button is selected. 

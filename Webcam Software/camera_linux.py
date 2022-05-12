@@ -13,10 +13,6 @@ from pathlib import Path
 
 
 cam1 = cv2.VideoCapture(0)
-cam2 = cv2.VideoCapture(2)
-
-
-
 
 
 if not(cam1.isOpened()):
@@ -24,18 +20,10 @@ if not(cam1.isOpened()):
     print("Error opening camera. Exiting...")
     time.sleep(5)
     exit()
-if not (cam2.isOpened()):
-    print("")
-    print("Detected only 1 camera. Continuing....")
-    time.sleep(2)
 
     
 cam1.set(3,1920)
 cam1.set(4,1080)
-cam2.set(3,1920)
-cam2.set(4,1080)
-
-
 
 now = datetime.now()
 dt = now.strftime("%d_%m_%Y")
@@ -70,11 +58,8 @@ try:
         now = datetime.now()
         dt_string = now.strftime("%H_%M_%S")
         ret, image = cam1.read()
-        ret2, image2 = cam2.read()
         cv2.normalize(image,image,0,255,cv2.NORM_MINMAX)
-        cv2.normalize(image2,image2,0,255,cv2.NORM_MINMAX)
         cv2.imwrite('/home/pi/Pictures/'+ filepath + str(dt_string) + '.jpg',image)
-        #missing a line here for writing camera two. I can figure it out tho. 
         time.sleep(int(delay))
 except KeyboardInterrupt:   
     cam1.release()

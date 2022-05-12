@@ -7,6 +7,9 @@
 # The following code is provided with NO WARRANTY WHATSOEVER.
 # Made with love, and midi-chlorians:
 # -Chris Zylstra (engineer, not a programmer)
+#
+# https://github.com/chriszylstra/ophardt/tree/main/PumpDown%20Tester
+
 
 
 import time
@@ -49,7 +52,6 @@ GPIO.output(17, GPIO.LOW)
 
 usb_status = False
 scale_status = False
-camera_status = False
 voltmeter_status = False
 
 filename = ""
@@ -77,17 +79,7 @@ except:
 
 
 # Not used right now, working on integrating a webcam into the station.
-try:
-    cam1 = cv2.VideoCapture(0)
-    if not cam1.isOpened():
-        raise ValueError('Borked Camera')
-    cam1.set(3, 1920)
-    cam1.set(4, 1080)
-    Path("/home/pi/Pictures/images/" + datetime.now().strftime("%d_%m_%Y")
-         ).mkdir(parents=True, exist_ok=True)
-    camera_status = True
-except:
-    pass
+
 
 # testing USB
 try:
@@ -113,9 +105,10 @@ def deactivate():
     GPIO.output(4, GPIO.LOW)
 
 
-def exit_but():
+def exit_button():
     GPIO.output(17, GPIO.LOW)
     activate()
+    stop_prog()
     app.destroy()
     sys.exit(0)
 
@@ -125,10 +118,6 @@ def start_prog():
     global remaining
     global usb_status
     global voltmeter_status
-    global camera_status
-
-    # if camera.value:
-    #     checkCam()
 
     if delay_input.value == "":
         app.warn("Warning", "Please enter delay value.")
@@ -148,7 +137,7 @@ def start_prog():
             int(length_input.value)
             int(dwell_input.value)
         except ValueError:
-            app.warn("Warning", "Only integers in delay/dwell/cycles.")
+            app.warn("Warning", "Only integers in delay/dwell/cycles")
             return
         if int(delay_input.value) < 2:
             app.warn("Warning", "Min delay is 2 seconds due to scale communication.")
@@ -169,6 +158,9 @@ def start_prog():
         scale_selector_sart.disable()
         touchless_selector.disable()
         manual_selector.disable()
+        camera_selector_on.disable()
+        camera_selector_off.disable()
+        interval_input.disable()
         filename = filename_input.value + "_" + datetime.today().strftime("%d-%b-%Y") + ".csv"
         headerList = ["Number", "Timestamp", "Total", "Difference", "Voltage"]
         if usb_status:
@@ -213,6 +205,8 @@ def cycle():
 
         GPIO.output(17, GPIO.LOW)
         activate()
+        if camera_selector_on.bg == "pale green":
+            take_picture()
         if usb_status:
             writedata(remaining, voltage)
     else:
@@ -239,6 +233,7 @@ def volt_measure():
 def stop_prog():
     GPIO.output(17, GPIO.LOW)
     global remaining
+    global cam1
     length_input.enable()
     delay_input.enable()
     dwell_input.enable()
@@ -250,11 +245,19 @@ def stop_prog():
     button_start.enable()
     button_stop.disable()
     button_pause.disable()
+    camera_selector_on.enable()
+    camera_selector_off.enable()
+    interval_input.enable()
     button_pause.text = "Pause"
     app.cancel(cycle)
     app.cancel(deactivate)
     activate()
     remaining = 0
+    try:
+        cam1.release()
+    except:
+        pass
+    cv2.destroyAllWindows()
 
 
 def pause_prog():
@@ -266,6 +269,7 @@ def pause_prog():
         app.cancel(deactivate)
         button_pause.text = "Resume"
     else:
+
         if touchless_selector.bg == "pale green":
             app.repeat(
                 (int(delay_input.value) + int(dwell_input.value)) * 1000,
@@ -361,6 +365,43 @@ def activate_touchless():
     manual_selector.bg = "white"
 
 
+def use_camera():
+    try:
+        cam1 = cv2.VideoCapture(0)
+        if not cam1.isOpened():
+            raise ValueError('Borked Camera')
+        cam1.set(3, 1920)
+        cam1.set(4, 1080)
+        Path("/media/pi/USB/Images/" + datetime.now().strftime("%d_%m_%Y")
+             ).mkdir(parents=True, exist_ok=True)
+    except:
+        app.warn("Warning", "Camera not connected. Cannot use camera.")
+    camera_selector_on.bg = "pale green"
+    camera_selector_off.bg = "white"
+    cameraStatus.value = "Camera: True"
+    cameraStatus.text_color = "green"
+    # box31.show()
+
+
+def no_camera():
+    camera_selector_on.bg = "white"
+    camera_selector_off.bg = "pale green"
+    box31.hide()
+
+
+def take_picture():
+    try:
+        cam1 = cv2.VideoCapture(0)
+        cam1.set(3, 1920)
+        cam1.set(4, 1080)
+        ret, image = cam1.read()
+        cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX)
+        cv2.imwrite('/media/pi/USB/Images/' + datetime.now().strftime("%d_%m_%Y")
+                    + '/' + datetime.now().strftime("%H_%M_%S") + '.jpg', image)
+    except Exception as e:
+        print(e)
+
+
 blank0 = Text(app, text="", size=1, align="left", grid=[0, 0])
 
 box0 = Box(app, border=True, grid=[0, 1], align="left")
@@ -370,7 +411,7 @@ delay_input.text_size = 50
 delay_input.focus()
 delay_back = Text(box0, text="seconds", align="left", size=50)
 
-box1 = Box(app, border=True, grid=[1, 3], align="right")
+box1 = Box(app, border=True, grid=[1, 3], align="left")
 settings_header = Text(box1, text="Settings", align="top")
 box11 = Box(box1, border=False)
 scale_selector_kern = PushButton(
@@ -389,6 +430,14 @@ manual_selector.bg = "pale green"
 touchless_selector = PushButton(
     box1, text="Touchless", command=activate_touchless, width=7, height=1, align="left")
 touchless_selector.bg = "white"
+camera_selector_on = PushButton(
+    box11, text="Cam ON", command=use_camera, width=7, height=1, align="left")
+camera_selector_on.bg = "white"
+camera_selector_on.text_size = "10"
+camera_selector_off = PushButton(
+    box11, text="Cam OFF", command=no_camera, width=7, height=1, align="left")
+camera_selector_off.bg = "pale green"
+camera_selector_off.text_size = "10"
 
 blank2 = Text(app, text="", size=20, grid=[0, 2])
 
@@ -405,6 +454,13 @@ length_front = Text(box3, text="Total Cycles:", align="left", size=50)
 length_input = TextBox(box3, align="left", width=15)
 length_input.text_size = 50
 
+box31 = Box(app, border=True, grid=[1, 5], align="left")
+interval_front = Text(box31, align="top", text="Timelapse Interval: (sec)")
+interval_input = TextBox(box31, align="top", width=14)
+interval_input.text_size = 15
+interval_info = Text(box31, align="bottom", text="Photos: /media/pi/USB/Images/*Date*/")
+box31.hide()
+
 blank4 = Text(app, text="", size=40, grid=[0, 6])
 
 box4 = Box(app, border=True, grid=[0, 7], align="left")
@@ -416,7 +472,8 @@ filename_back = Text(
 
 file_location = Text(
     app, grid=[0, 8],
-    text="Data file saved at: /media/pi/USB/", size=15, align="left")
+    text="Data saved at: /media/pi/USB/*filename.csv;   Webcam photos saved at: /media/pi/USB/Images/*date/*time.jpg",
+    size=15, align="left")
 
 blank5 = Text(app, text="", size=30, grid=[0, 8])
 
@@ -437,10 +494,8 @@ multimeterStatus = Text(
     align="left")
 if voltmeter_status:
     multimeterStatus.text_color = "green"
-cameraStatus = Text(box5, text="Camera: " + str(camera_status),
-                    color="red", grid=[0, 4], align="left")
-if camera_status:
-    cameraStatus.text_color = "green"
+cameraStatus = Text(box5, text="Camera: pending",
+                    color="yellow4", grid=[0, 4], align="left")
 
 box6 = Box(app, border=False, grid=[0, 9])
 boxGap0 = Box(box6, width=60, height=3, align="left")
@@ -480,7 +535,7 @@ voltage = Text(box7, text="Battery voltage: ",
 
 blank6 = Text(app, text="", size=20, grid=[0, 11])
 
-exiter = PushButton(app, command=exit_but, text="Exit", width=20,
+exiter = PushButton(app, command=exit_button, text="Exit", width=20,
                     height=2, grid=[0, 12], align="bottom")
 exiter.text_size = 20
 exiter.bg = "indian red"
