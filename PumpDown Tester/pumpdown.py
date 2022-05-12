@@ -376,6 +376,7 @@ def use_camera():
              ).mkdir(parents=True, exist_ok=True)
     except:
         app.warn("Warning", "Camera not connected. Cannot use camera.")
+        return
     camera_selector_on.bg = "pale green"
     camera_selector_off.bg = "white"
     cameraStatus.value = "Camera: True"
