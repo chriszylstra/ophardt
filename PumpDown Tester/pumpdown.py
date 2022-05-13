@@ -105,9 +105,14 @@ def deactivate():
 
 
 def exit_button():
+    global cam1
     GPIO.output(17, GPIO.LOW)
     activate()
     stop_prog()
+    try:
+        cam1.release()
+    except:
+        pass
     app.destroy()
     sys.exit(0)
 
@@ -252,10 +257,6 @@ def stop_prog():
     app.cancel(deactivate)
     activate()
     remaining = 0
-    try:
-        cam1.release()
-    except:
-        pass
     cv2.destroyAllWindows()
 
 
@@ -385,8 +386,13 @@ def use_camera():
 
 
 def no_camera():
+    global cam1
     camera_selector_on.bg = "white"
     camera_selector_off.bg = "pale green"
+    try:
+        cam1.release()
+    except:
+        pass
     box31.hide()
 
 
@@ -539,10 +545,10 @@ exiter = PushButton(app, command=exit_button, text="Exit", width=20,
 exiter.text_size = 20
 exiter.bg = "indian red"
 
-date = Text(app, text="Build Date: 12 May 2022",
+date = Text(app, text="Build Date: 13 May 2022",
             size=15, align="left", grid=[0, 13])
 box41 = Box(app, layout="grid", border=False, grid=[0, 14], align="left")
-version = Text(box41, text="Version: 1.1",
+version = Text(box41, text="Version: 1.1a",
                size=15, align="left", grid=[0, 0])
 information = PushButton(box41, command=open_window, text="Info",
                          width=2, height=1, grid=[1, 0], align="left")
