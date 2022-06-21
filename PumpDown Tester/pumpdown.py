@@ -16,6 +16,7 @@ import sys
 import csv
 import os
 import socket
+import threading
 from datetime import datetime
 from pathlib import Path
 import serial
@@ -43,6 +44,9 @@ try:
 except ImportError:
     sys.exit("You need adafruit_ina219. Install it with 'sudo \
 pip3 install adafruit-circuitpython-ina219'")
+
+import plotly.express as px
+import pandas as pd
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -235,6 +239,7 @@ def volt_measure():
 
 
 def stop_prog():
+    os.system("pkill chromium")
     GPIO.output(17, GPIO.LOW)
     global remaining
     global cam1
@@ -407,6 +412,20 @@ def take_picture():
         print(e)
 
 
+def thread_graph():
+    x = threading.Thread(target=graph)
+    x.start()
+
+
+def graph():
+    # if chrome is open, kill it
+    os.system("pkill chromium")
+    global filename
+    df = pd.read_csv('/media/pi/USB/' + filename)
+    fig = px.line(df, x='Number', y=['Total', 'Difference', 'Voltage'],range_y=[0,10])
+    fig.show()
+
+
 blank0 = Text(app, text="", size=1, align="left", grid=[0, 0])
 
 box0 = Box(app, border=True, grid=[0, 1], align="left")
@@ -544,6 +563,11 @@ exiter = PushButton(app, command=exit_button, text="Exit", width=20,
                     height=2, grid=[0, 12], align="bottom")
 exiter.text_size = 20
 exiter.bg = "indian red"
+
+button_graph = PushButton(app, command=thread_graph, text="Show Graph", width=10,
+                          height=2, grid=[1, 12], align="bottom")
+button_graph.text_size = 20
+button_graph.bg = "light blue"
 
 date = Text(app, text="Build Date: 13 May 2022",
             size=15, align="left", grid=[0, 13])
