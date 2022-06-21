@@ -1,0 +1,16 @@
+12 May 2022 - Version 1.1
+*************************
+-First instance of keeping changelog
+-Release of Camera functionality and button.
+-Camera takes a photo and stores it in the usb folder every activation if the button is selected. 
+
+13 May 2022 - Version 1.1a
+**************************
+-bugfix issue with camera not working after stopping pumpdown and starting a new one without restarting the app.
+
+
+
+Known Issues:
+************
+-None.
+-email czylstra@ophardt.com if you have issues to report.

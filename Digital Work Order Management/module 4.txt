@@ -1,0 +1,69 @@
+Option Compare Database
+
+'Update Syspro SOW network to local drive
+'1. Clear the local drive of data
+'2. Append filtered SOWOReport live network data from syspro
+
+Function Update_Step_02_dbo_vw_SOWOReport_localdrive_001()
+        relinkTables
+        DoCmd.Echo False
+        DoCmd.SetWarnings False
+        
+        DoCmd.OpenQuery "Step02_dbo_vw_SOWOReport_localdrive_001_clear_all", acViewNormal, acEdit
+        DoCmd.OpenQuery "Step02_dbo_vw_SOWOReport_localdrive_002", acViewNormal, acEdit
+            
+            TWait = Time
+            TWait = DateAdd("s", 1, TWait)
+            Do Until TNow >= TWait
+            TNow = Time
+            Loop
+                             
+        DoCmd.Echo True
+        DoCmd.SetWarnings True
+
+End Function
+
+
+Function relinkTables()
+    On Error GoTo errHandler
+    Debug.Print (Now & " relinkTables")
+    Dim db As Database
+    Dim tdf As TableDef
+    Set db = CurrentDb
+    Set tdf = db.TableDefs("Step01_dbo_vw_SOWOReport_Rev1_network_000")
+    tdf.Connect = "ODBC;DSN=SOWO;UID=srs;APP=Microsoft Office 2010;DATABASE=SysproCompanyH;TABLE=dbo.vw_SOWOReport_Rev1;PWD=4743"
+    tdf.RefreshLink
+    Exit Function
+errHandler:
+    MessageBoxTimer
+    OpenOtherDb CurrentProject.Path & "/" & Application.CurrentProject.Name
+    
+    Dim i As Long
+    For i = 0 To Errors.Count - 1
+        Debug.Print Errors(i).Number, Errors(i).Description
+    Next i
+End Function
+
+
+Function OpenOtherDb(strDbPath As String)
+  Dim objAcc As Object
+    
+   Set objAcc = CreateObject("Access.Application")
+
+   objAcc.OpenCurrentDatabase strDbPath
+
+   objAcc.UserControl = True
+  
+   Application.Quit
+End Function
+
+Sub MessageBoxTimer()
+    Dim AckTime As Integer, InfoBox As Object
+    Set InfoBox = CreateObject("WScript.Shell")
+    AckTime = 2
+    Select Case InfoBox.PopUp("Network Failure. Closing & reopening DB", _
+    AckTime, "Message", 0)
+        Case 1, -1
+            Exit Sub
+    End Select
+End Sub
