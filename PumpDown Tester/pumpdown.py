@@ -212,9 +212,9 @@ def cycle():
             voltage = volt_measure()
 
         GPIO.output(17, GPIO.LOW)
-        activate()
         if camera_selector_on.bg == "pale green":
             take_picture()
+        activate()
         if usb_status:
             writedata(remaining, voltage)
     else:
