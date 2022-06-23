@@ -45,7 +45,11 @@ except ImportError:
     sys.exit("You need adafruit_ina219. Install it with 'sudo \
 pip3 install adafruit-circuitpython-ina219'")
 
-import plotly.express as px
+try:
+    import plotly.express as px
+except ImportError:
+    sys.exit("You need plotly. Install it with 'pip install plotly && pip install pandas'")
+    
 import pandas as pd
 
 GPIO.setwarnings(False)
