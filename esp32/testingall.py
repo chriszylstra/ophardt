@@ -3,7 +3,7 @@ import _thread
 #import wifimgr
 import machine
 import network
-import urequests
+#import urequests
 try:
   import usocket as socket
 except:
@@ -14,7 +14,7 @@ from hx711 import HX711
 
 #constants
 duty_c = 0.75 #starting duty cycle, this changes with feedback. 
-cooldown_ms = 2000
+cooldown_ms = 5000
 target_cycle_time = 400
 machine.freq(80000000)
 loadcell_offset = None
@@ -209,7 +209,7 @@ while True:
         endTime = time.ticks_ms()
     
     dt = time.ticks_diff(time.ticks_ms(),start_time)
-    if (dt < cooldown_ms) or (not hand_sense()):
+    if (dt < cooldown_ms): # or (not hand_sense()):
         continue
     
     #If you got to here, a hand was detected:
